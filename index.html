@@ -585,7 +585,17 @@
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: 'Resposta inválida' }));
                     console.error('Erro na resposta:', errorData);
-                    throw new Error(`HTTP ${response.status}: ${errorData.error || response.statusText}`);
+                    
+                    // Construir mensagem de erro mais detalhada
+                    let errorMessage = `HTTP ${response.status}`;
+                    if (errorData.error) {
+                        errorMessage += `: ${errorData.error}`;
+                    }
+                    if (errorData.details && errorData.details.message) {
+                        errorMessage += ` - ${errorData.details.message}`;
+                    }
+                    
+                    throw new Error(errorMessage);
                 }
 
                 const data = await response.json();
@@ -604,21 +614,21 @@
                 updateConnectionStatus('connecting', 'Autenticando...');
                 console.log('Iniciando autenticação com iFood...');
                 
-                // OAuth2 usa application/x-www-form-urlencoded
+                // iFood authentication com formato correto
                 const response = await apiRequest('/authentication/v1.0/oauth/token', {
                     method: 'POST',
                     requiresAuth: false,
-                    isFormData: true,
+                    isFormData: false,
                     body: {
-                        grant_type: 'client_credentials',
-                        client_id: API_CONFIG.clientId,
-                        client_secret: API_CONFIG.clientSecret
+                        grantType: 'client_credentials',
+                        clientId: API_CONFIG.clientId,
+                        clientSecret: API_CONFIG.clientSecret
                     }
                 });
 
                 console.log('Resposta da autenticação:', response);
 
-                if (response.accessToken || response.access_token) {
+                if (response && (response.accessToken || response.access_token)) {
                     accessToken = response.accessToken || response.access_token;
                     console.log('Token de acesso obtido com sucesso');
                     updateConnectionStatus('connected', 'Conectado');
@@ -626,19 +636,26 @@
                     startPolling();
                     return true;
                 } else {
-                    console.error('Resposta da autenticação sem token:', response);
-                    throw new Error('Token de acesso não recebido na resposta');
+                    console.error('Resposta da autenticação inválida:', response);
+                    throw new Error('Token de acesso não recebido. Resposta: ' + JSON.stringify(response));
                 }
             } catch (error) {
                 console.error('Erro detalhado na autenticação:', error);
                 updateConnectionStatus('error', 'Erro de conexão');
-                showToast('Erro ao conectar com o iFood: ' + error.message, 'error');
                 
-                // Tentar novamente em 10 segundos
+                // Mostrar erro mais detalhado
+                let errorMessage = error.message;
+                if (error.message.includes('[object Object]')) {
+                    errorMessage = 'Erro de formato na resposta da API';
+                }
+                
+                showToast('Erro ao conectar: ' + errorMessage, 'error');
+                
+                // Tentar novamente em 15 segundos
+                console.log('Tentando reautenticar em 15 segundos...');
                 setTimeout(() => {
-                    console.log('Tentando reautenticar...');
                     authenticate();
-                }, 10000);
+                }, 15000);
                 
                 return false;
             }
@@ -1210,11 +1227,6 @@
             applyFilters();
             renderOrders();
             
-            // Iniciar autenticação após verificar a função
-            setTimeout(() => {
-                authenticate();
-            }, 1000);
-            
             console.log('Aplicação inicializada');
         });
 
@@ -1237,12 +1249,26 @@
                     console.error('ERRO: Função Netlify não encontrada!');
                     showToast('Erro: Função proxy não encontrada. Verifique o deploy.', 'error');
                     updateConnectionStatus('error', 'Função proxy não encontrada');
-                } else {
+                } else if (response.status === 200 || response.status === 500) {
                     console.log('Função Netlify está acessível');
+                    // Testar autenticação após um pequeno delay
+                    setTimeout(() => {
+                        authenticate();
+                    }, 500);
+                } else {
+                    console.log('Função Netlify respondeu com status:', response.status);
+                    // Ainda assim tentar autenticar
+                    setTimeout(() => {
+                        authenticate();
+                    }, 500);
                 }
             } catch (error) {
                 console.error('Erro ao testar função Netlify:', error);
                 showToast('Erro ao acessar função proxy', 'error');
+                // Tentar autenticar mesmo assim
+                setTimeout(() => {
+                    authenticate();
+                }, 1000);
             }
         }
 
