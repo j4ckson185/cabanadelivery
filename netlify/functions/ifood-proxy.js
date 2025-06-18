@@ -1,1294 +1,155 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cabana Delivery - Gestão de Pedidos</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+// netlify/functions/ifood-proxy.js
+// Salve este arquivo em: netlify/functions/ifood-proxy.js
+
+exports.handler = async (event, context) => {
+    // Apenas aceitar POST requests
+    if (event.httpMethod !== 'POST') {
+        return {
+            statusCode: 405,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS'
+            },
+            body: JSON.stringify({ error: 'Method not allowed' })
+        };
+    }
+
+    // Handle CORS preflight
+    if (event.httpMethod === 'OPTIONS') {
+        return {
+            statusCode: 200,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS'
+            },
+            body: ''
+        };
+    }
+
+    try {
+        const { endpoint, method = 'GET', body, headers = {}, isFormData = false } = JSON.parse(event.body);
+        
+        if (!endpoint) {
+            return {
+                statusCode: 400,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ error: 'Endpoint é obrigatório' })
+            };
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
-        }
+        const baseUrl = 'https://merchant-api.ifood.com.br';
+        const fullUrl = `${baseUrl}${endpoint}`;
 
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .logo {
-            font-size: 2rem;
-            font-weight: bold;
-            background: linear-gradient(45deg, #EA1D2C, #FF6B35);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .status-badge {
-            padding: 0.5rem 1rem;
-            border-radius: 25px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: white;
-        }
-
-        .status-connected { background: #4CAF50; }
-        .status-error { background: #f44336; }
-        .status-connecting { background: #FF9800; }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .filters {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-
-        .filter-group {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .filter-input {
-            padding: 0.8rem 1.2rem;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            background: white;
-        }
-
-        .filter-input:focus {
-            outline: none;
-            border-color: #EA1D2C;
-            box-shadow: 0 0 0 3px rgba(234, 29, 44, 0.1);
-        }
-
-        .orders-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 2rem;
-        }
-
-        .category {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 1.5rem;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .category-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid #f0f0f0;
-        }
-
-        .category-title {
-            font-size: 1.3rem;
-            font-weight: bold;
-        }
-
-        .category-count {
-            background: #EA1D2C;
-            color: white;
-            padding: 0.3rem 0.8rem;
-            border-radius: 15px;
-            font-size: 0.9rem;
-            font-weight: bold;
-        }
-
-        .em-preparo { border-left: 5px solid #FF9800; }
-        .a-caminho { border-left: 5px solid #2196F3; }
-        .concluido { border-left: 5px solid #4CAF50; }
-        .cancelado { border-left: 5px solid #f44336; }
-
-        .order-card {
-            background: white;
-            border-radius: 15px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            border: 2px solid transparent;
-        }
-
-        .order-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-            border-color: #EA1D2C;
-        }
-
-        .order-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .order-id {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: #EA1D2C;
-        }
-
-        .order-time {
-            font-size: 0.9rem;
-            color: #666;
-        }
-
-        .order-customer {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 0.5rem;
-        }
-
-        .order-total {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #4CAF50;
-            text-align: right;
-        }
-
-        .order-payment {
-            background: #f8f9fa;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            color: #666;
-            margin-top: 0.5rem;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(5px);
-            z-index: 1000;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .modal-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            border-radius: 20px;
-            max-width: 800px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
-
-        .modal-header {
-            background: linear-gradient(45deg, #EA1D2C, #FF6B35);
-            color: white;
-            padding: 2rem;
-            border-radius: 20px 20px 0 0;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        .modal-body {
-            padding: 2rem;
-        }
-
-        .close-btn {
-            position: absolute;
-            top: 1rem;
-            right: 1.5rem;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 2rem;
-            cursor: pointer;
-            opacity: 0.7;
-            transition: opacity 0.3s ease;
-        }
-
-        .close-btn:hover {
-            opacity: 1;
-        }
-
-        .detail-section {
-            margin-bottom: 2rem;
-            padding: 1.5rem;
-            background: #f8f9fa;
-            border-radius: 15px;
-        }
-
-        .detail-title {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #EA1D2C;
-            margin-bottom: 1rem;
-            border-bottom: 2px solid #EA1D2C;
-            padding-bottom: 0.5rem;
-        }
-
-        .detail-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .detail-item:last-child {
-            border-bottom: none;
-        }
-
-        .detail-label {
-            font-weight: 600;
-            color: #666;
-        }
-
-        .detail-value {
-            color: #333;
-        }
-
-        .item-list {
-            list-style: none;
-        }
-
-        .item-card {
-            background: white;
-            border-radius: 10px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        }
-
-        .item-name {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 0.5rem;
-        }
-
-        .item-details {
-            font-size: 0.9rem;
-            color: #666;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 1rem 2rem;
-            border: none;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .btn-primary {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .btn-warning {
-            background: #FF9800;
-            color: white;
-        }
-
-        .btn-danger {
-            background: #f44336;
-            color: white;
-        }
-
-        .btn-info {
-            background: #2196F3;
-            color: white;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .toast {
-            position: fixed;
-            top: 2rem;
-            right: 2rem;
-            background: #4CAF50;
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            z-index: 1001;
-            opacity: 0;
-            transform: translateX(100%);
-            transition: all 0.3s ease;
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        .toast.error {
-            background: #f44336;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            color: #666;
-        }
-
-        .empty-state-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            opacity: 0.3;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
+        console.log(`Fazendo requisição: ${method} ${fullUrl}`);
+        console.log('Headers:', headers);
+        console.log('Body:', body);
+        console.log('Is Form Data:', isFormData);
+        
+        const fetchOptions = {
+            method,
+            headers: {
+                'User-Agent': 'Cabana-Delivery/1.0',
+                ...headers
             }
-
-            .header-content {
-                flex-direction: column;
-                gap: 1rem;
-            }
-
-            .filter-group {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .orders-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .modal-content {
-                width: 95%;
-                max-height: 95vh;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="header-content">
-            <div class="logo">🏖️ Cabana Delivery</div>
-            <div id="connectionStatus" class="status-badge status-connecting">
-                <span class="loading"></span> Conectando...
-            </div>
-        </div>
-    </div>
-
-    <div class="container">
-        <div class="filters">
-            <div class="filter-group">
-                <input type="text" id="searchInput" class="filter-input" placeholder="🔍 Buscar por número do pedido ou cliente...">
-                <select id="paymentFilter" class="filter-input">
-                    <option value="">Todos os pagamentos</option>
-                    <option value="CASH">Dinheiro</option>
-                    <option value="CREDIT">Cartão de Crédito</option>
-                    <option value="DEBIT">Cartão de Débito</option>
-                    <option value="PIX">PIX</option>
-                    <option value="ONLINE">Online</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="orders-grid">
-            <div class="category em-preparo">
-                <div class="category-header">
-                    <div class="category-title">🔥 Em Preparo</div>
-                    <div class="category-count" id="countEmPreparo">0</div>
-                </div>
-                <div id="ordersEmPreparo" class="orders-container"></div>
-            </div>
-
-            <div class="category a-caminho">
-                <div class="category-header">
-                    <div class="category-title">🚀 A Caminho</div>
-                    <div class="category-count" id="countACaminho">0</div>
-                </div>
-                <div id="ordersACaminho" class="orders-container"></div>
-            </div>
-
-            <div class="category concluido">
-                <div class="category-header">
-                    <div class="category-title">✅ Concluído</div>
-                    <div class="category-count" id="countConcluido">0</div>
-                </div>
-                <div id="ordersConcluido" class="orders-container"></div>
-            </div>
-
-            <div class="category cancelado">
-                <div class="category-header">
-                    <div class="category-title">❌ Cancelado</div>
-                    <div class="category-count" id="countCancelado">0</div>
-                </div>
-                <div id="ordersCancelado" class="orders-container"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Detalhes do Pedido -->
-    <div id="orderModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Detalhes do Pedido</h2>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body" id="modalBody">
-                <!-- Conteúdo será inserido dinamicamente -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast para notificações -->
-    <div id="toast" class="toast"></div>
-
-    <script>
-        // Configurações da API do iFood
-        const API_CONFIG = {
-            merchantId: '2733980',
-            merchantUUID: 'cbf5929d-2eb9-49d0-aaca-ea9dcfdb387a',
-            clientId: '0ab88bb0-0d63-4010-a0b6-a0bc25eea198',
-            clientSecret: 'hzuj6prosxn02zbm8v34lyob00rb1klxkpivb1wuzxyp2fd2ivj95t697wonsyb7vtiesrltuc4f3h8kevdby77vn3yapx7s3yv',
-            pollingInterval: 30000,
-            baseUrl: 'https://merchant-api.ifood.com.br'
         };
 
-        // Estado da aplicação
-        let accessToken = null;
-        let orders = new Map();
-        let filteredOrders = new Map();
-        let pollingTimer = null;
-        let isPolling = false;
-
-        // Elementos DOM
-        const connectionStatus = document.getElementById('connectionStatus');
-        const searchInput = document.getElementById('searchInput');
-        const paymentFilter = document.getElementById('paymentFilter');
-        const modal = document.getElementById('orderModal');
-        const toast = document.getElementById('toast');
-
-        // Função para fazer requisições via proxy Netlify
-        async function apiRequest(endpoint, options = {}) {
-            const { method = 'GET', body, requiresAuth = true, isFormData = false } = options;
-            
-            const headers = {};
-
-            if (requiresAuth && accessToken) {
-                headers['Authorization'] = `Bearer ${accessToken}`;
-            }
-
-            if (endpoint.includes('polling')) {
-                headers['x-polling-merchants'] = API_CONFIG.merchantUUID;
-            }
-
-            // Para endpoints que não são OAuth, adicionar Content-Type JSON
-            if (!isFormData && !endpoint.includes('authentication')) {
-                headers['Content-Type'] = 'application/json';
-            }
-
-            try {
-                console.log(`📤 Fazendo requisição: ${method} ${endpoint}`);
-                console.log('📋 Headers enviados:', headers);
-                console.log('📋 Body enviado:', body);
-                
-                const requestPayload = {
-                    endpoint,
-                    method,
-                    headers,
-                    body,
-                    isFormData
-                };
-                
-                console.log('📦 Payload completo para proxy:', requestPayload);
-                
-                const response = await fetch('/.netlify/functions/ifood-proxy', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestPayload)
+        if (body && method !== 'GET') {
+            if (isFormData) {
+                // Para OAuth2 padrão, usar application/x-www-form-urlencoded
+                const params = new URLSearchParams();
+                Object.keys(body).forEach(key => {
+                    params.append(key, body[key]);
                 });
-
-                console.log(`📨 Status da resposta: ${response.status} ${response.statusText}`);
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ error: 'Resposta inválida' }));
-                    console.error('❌ Erro na resposta do proxy:', errorData);
-                    
-                    // Construir mensagem de erro mais detalhada
-                    let errorMessage = `HTTP ${response.status}`;
-                    if (errorData.error) {
-                        errorMessage += `: ${errorData.error}`;
-                    }
-                    if (errorData.details && errorData.details.message) {
-                        errorMessage += ` - ${errorData.details.message}`;
-                    }
-                    
-                    throw new Error(errorMessage);
-                }
-
-                const data = await response.json();
-                console.log(`✅ Resposta recebida para ${endpoint}:`, data);
+                fetchOptions.body = params.toString();
+                fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            } else if (endpoint.includes('authentication')) {
+                // iFood authentication: Usar URLSearchParams para garantir formato correto
+                const params = new URLSearchParams();
+                params.append('grantType', body.grantType || body.grant_type || 'client_credentials');
+                params.append('clientId', body.clientId || body.client_id);
+                params.append('clientSecret', body.clientSecret || body.client_secret);
                 
-                return data;
-            } catch (error) {
-                console.error('❌ Erro na requisição API:', error);
-                throw error;
+                fetchOptions.body = params.toString();
+                fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+                
+                console.log('Body da autenticação:', fetchOptions.body);
+            } else {
+                // Para outras requisições, usar JSON padrão
+                fetchOptions.body = JSON.stringify(body);
+                fetchOptions.headers['Content-Type'] = 'application/json';
             }
         }
 
-        // Autenticação OAuth2
-        async function authenticate() {
+        const response = await fetch(fullUrl, fetchOptions);
+        
+        console.log(`Resposta: ${response.status} ${response.statusText}`);
+        
+        let responseData;
+        const contentType = response.headers.get('content-type');
+        
+        if (contentType && contentType.includes('application/json')) {
+            responseData = await response.json();
+        } else {
+            const textData = await response.text();
+            // Tentar parsear como JSON se possível
             try {
-                updateConnectionStatus('connecting', 'Autenticando...');
-                console.log('🔐 Iniciando autenticação com iFood...');
-                console.log('🔑 Credenciais:', {
-                    clientId: API_CONFIG.clientId,
-                    clientSecret: API_CONFIG.clientSecret.substring(0, 10) + '...' // Mostrar só início
-                });
-                
-                // iFood authentication com formato correto
-                const response = await apiRequest('/authentication/v1.0/oauth/token', {
-                    method: 'POST',
-                    requiresAuth: false,
-                    isFormData: false,
-                    body: {
-                        grantType: 'client_credentials',
-                        clientId: API_CONFIG.clientId,
-                        clientSecret: API_CONFIG.clientSecret
-                    }
-                });
-
-                console.log('📨 Resposta completa da autenticação:', response);
-
-                if (response && (response.accessToken || response.access_token)) {
-                    accessToken = response.accessToken || response.access_token;
-                    console.log('✅ Token de acesso obtido com sucesso');
-                    console.log('🎫 Token (primeiros 20 chars):', accessToken.substring(0, 20) + '...');
-                    updateConnectionStatus('connected', 'Conectado');
-                    showToast('Conectado com sucesso ao iFood!', 'success');
-                    startPolling();
-                    return true;
-                } else {
-                    console.error('❌ Resposta da autenticação sem token:', response);
-                    throw new Error('Token de acesso não recebido. Resposta: ' + JSON.stringify(response));
-                }
-            } catch (error) {
-                console.error('❌ Erro detalhado na autenticação:', error);
-                console.error('🔍 Stack trace:', error.stack);
-                updateConnectionStatus('error', 'Erro de conexão');
-                
-                // Mostrar erro mais detalhado
-                let errorMessage = error.message;
-                if (error.message.includes('[object Object]')) {
-                    errorMessage = 'Erro de formato na resposta da API';
-                }
-                
-                showToast('Erro ao conectar: ' + errorMessage, 'error');
-                
-                // Tentar novamente em 15 segundos
-                console.log('⏰ Tentando reautenticar em 15 segundos...');
-                setTimeout(() => {
-                    authenticate();
-                }, 15000);
-                
-                return false;
+                responseData = JSON.parse(textData);
+            } catch {
+                responseData = { data: textData };
             }
         }
 
-        // Polling unificado
-        async function startPolling() {
-            if (isPolling) {
-                console.log('Polling já está ativo');
-                return;
-            }
-            
-            isPolling = true;
-            console.log('Iniciando polling a cada 30 segundos...');
+        console.log('Dados da resposta:', responseData);
 
-            const poll = async () => {
-                try {
-                    console.log('Fazendo polling para novos eventos...');
-                    const events = await apiRequest('/events/v1.0/events:polling');
-                    
-                    console.log(`Polling retornou ${events?.length || 0} eventos`);
-                    
-                    if (events && events.length > 0) {
-                        console.log('Eventos recebidos:', events);
-                        await processEvents(events);
-                        await acknowledgeEvents(events.map(e => e.id));
-                    }
-                } catch (error) {
-                    console.error('Erro no polling:', error);
-                    
-                    if (error.message.includes('401') || error.message.includes('403')) {
-                        console.log('Token expirado, tentando renovar...');
-                        isPolling = false;
-                        await authenticate();
-                        return;
-                    } else if (error.message.includes('500') || error.message.includes('502') || error.message.includes('503')) {
-                        console.log('Erro do servidor iFood, tentando novamente em 60 segundos...');
-                        updateConnectionStatus('error', 'Servidor iFood indisponível');
-                        if (isPolling) {
-                            pollingTimer = setTimeout(poll, 60000); // Aguardar 1 minuto em caso de erro do servidor
-                        }
-                        return;
-                    }
-                    
-                    updateConnectionStatus('error', 'Erro no polling');
-                    showToast('Erro ao buscar eventos: ' + error.message, 'error');
-                }
-
-                if (isPolling) {
-                    updateConnectionStatus('connected', 'Conectado');
-                    pollingTimer = setTimeout(poll, API_CONFIG.pollingInterval);
-                }
+        // Se a resposta não é OK, mas tem dados de erro estruturados
+        if (!response.ok && responseData) {
+            return {
+                statusCode: response.status,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    error: responseData.error || responseData.message || `HTTP ${response.status}`,
+                    details: responseData,
+                    status: response.status
+                })
             };
-
-            // Iniciar o primeiro polling
-            poll();
         }
 
-        // Processar eventos
-        async function processEvents(events) {
-            console.log(`Processando ${events.length} eventos...`);
-            
-            for (const event of events) {
-                try {
-                    console.log(`Processando evento: ${event.code} para pedido ${event.orderId}`);
-                    
-                    if (event.code === 'PLC' || event.code === 'PLACED') {
-                        // Novo pedido - buscar detalhes completos
-                        console.log(`Novo pedido recebido: ${event.orderId}`);
-                        const orderDetails = await getOrderDetails(event.orderId);
-                        if (orderDetails) {
-                            orders.set(event.orderId, orderDetails);
-                            console.log(`Detalhes do pedido ${event.orderId} carregados:`, orderDetails);
-                            showToast(`Novo pedido recebido: #${orderDetails.displayId}`, 'success');
-                        } else {
-                            console.error(`Falha ao carregar detalhes do pedido ${event.orderId}`);
-                        }
-                    } else {
-                        // Atualização de status
-                        console.log(`Atualização de status para pedido ${event.orderId}: ${event.code}`);
-                        const existingOrder = orders.get(event.orderId);
-                        if (existingOrder) {
-                            const oldStatus = existingOrder.orderStatus;
-                            existingOrder.orderStatus = event.code;
-                            orders.set(event.orderId, existingOrder);
-                            console.log(`Status do pedido ${event.orderId} atualizado de ${oldStatus} para ${event.code}`);
-                            showToast(`Pedido #${existingOrder.displayId} - Status: ${getStatusLabel(event.code)}`, 'success');
-                        } else {
-                            // Se não temos o pedido, buscar detalhes
-                            console.log(`Pedido ${event.orderId} não encontrado no cache, buscando detalhes...`);
-                            const orderDetails = await getOrderDetails(event.orderId);
-                            if (orderDetails) {
-                                orders.set(event.orderId, orderDetails);
-                                console.log(`Pedido ${event.orderId} adicionado ao cache`);
-                            }
-                        }
-                    }
-                } catch (error) {
-                    console.error(`Erro ao processar evento ${event.id}:`, error);
-                    showToast(`Erro ao processar evento: ${error.message}`, 'error');
-                }
-            }
+        // Retornar resposta com headers CORS
+        return {
+            statusCode: response.status,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(responseData)
+        };
 
-            console.log(`Total de pedidos no cache: ${orders.size}`);
-            applyFilters();
-            renderOrders();
-        }
-
-        // Buscar detalhes do pedido
-        async function getOrderDetails(orderId) {
-            try {
-                const order = await apiRequest(`/order/v1.0/orders/${orderId}`);
-                return order;
-            } catch (error) {
-                console.error('Erro ao buscar detalhes do pedido:', error);
-                return null;
-            }
-        }
-
-        // Confirmar eventos
-        async function acknowledgeEvents(eventIds) {
-            try {
-                await apiRequest('/events/v1.0/events/acknowledgment', {
-                    method: 'POST',
-                    body: { eventIds }
-                });
-            } catch (error) {
-                console.error('Erro ao confirmar eventos:', error);
-            }
-        }
-
-        // Ações do pedido
-        async function confirmOrder(orderId) {
-            try {
-                await apiRequest(`/order/v1.0/orders/${orderId}/confirm`, {
-                    method: 'POST'
-                });
-                
-                const order = orders.get(orderId);
-                if (order) {
-                    order.orderStatus = 'CONFIRMED';
-                    orders.set(orderId, order);
-                    renderOrders();
-                    showToast('Pedido confirmado com sucesso!', 'success');
-                }
-            } catch (error) {
-                showToast('Erro ao confirmar pedido: ' + error.message, 'error');
-            }
-        }
-
-        async function dispatchOrder(orderId) {
-            try {
-                await apiRequest(`/order/v1.0/orders/${orderId}/dispatch`, {
-                    method: 'POST'
-                });
-                
-                const order = orders.get(orderId);
-                if (order) {
-                    order.orderStatus = 'DISPATCHED';
-                    orders.set(orderId, order);
-                    renderOrders();
-                    showToast('Pedido despachado com sucesso!', 'success');
-                }
-            } catch (error) {
-                showToast('Erro ao despachar pedido: ' + error.message, 'error');
-            }
-        }
-
-        async function cancelOrder(orderId, reason = 'Cancelado pelo restaurante') {
-            try {
-                await apiRequest(`/order/v1.0/orders/${orderId}/requestCancellation`, {
-                    method: 'POST',
-                    body: { reason }
-                });
-                
-                const order = orders.get(orderId);
-                if (order) {
-                    order.orderStatus = 'CANCELLED';
-                    orders.set(orderId, order);
-                    renderOrders();
-                    showToast('Pedido cancelado com sucesso!', 'success');
-                }
-            } catch (error) {
-                showToast('Erro ao cancelar pedido: ' + error.message, 'error');
-            }
-        }
-
-        // Atualizar status de conexão
-        function updateConnectionStatus(status, text) {
-            connectionStatus.className = `status-badge status-${status}`;
-            connectionStatus.innerHTML = status === 'connecting' ? 
-                `<span class="loading"></span> ${text}` : text;
-        }
-
-        // Mostrar toast
-        function showToast(message, type = 'success') {
-            toast.textContent = message;
-            toast.className = `toast ${type} show`;
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 5000);
-        }
-
-        // Aplicar filtros
-        function applyFilters() {
-            const searchTerm = searchInput.value.toLowerCase();
-            const paymentType = paymentFilter.value;
-
-            filteredOrders.clear();
-
-            for (const [orderId, order] of orders) {
-                let matches = true;
-
-                // Filtro de busca
-                if (searchTerm) {
-                    const customerName = order.customer?.name?.toLowerCase() || '';
-                    const displayId = order.displayId?.toLowerCase() || '';
-                    matches = matches && (customerName.includes(searchTerm) || displayId.includes(searchTerm));
-                }
-
-                // Filtro de pagamento
-                if (paymentType) {
-                    const orderPaymentType = order.payments?.[0]?.type || '';
-                    matches = matches && orderPaymentType === paymentType;
-                }
-
-                if (matches) {
-                    filteredOrders.set(orderId, order);
-                }
-            }
-        }
-
-        // Renderizar pedidos
-        function renderOrders() {
-            const categories = {
-                emPreparo: { statuses: ['PLACED', 'CONFIRMED'], element: 'ordersEmPreparo', count: 'countEmPreparo' },
-                aCaminho: { statuses: ['DISPATCHED'], element: 'ordersACaminho', count: 'countACaminho' },
-                concluido: { statuses: ['CONCLUDED'], element: 'ordersConcluido', count: 'countConcluido' },
-                cancelado: { statuses: ['CANCELLED'], element: 'ordersCancelado', count: 'countCancelado' }
-            };
-
-            // Limpar categorias
-            Object.values(categories).forEach(cat => {
-                document.getElementById(cat.element).innerHTML = '';
-                document.getElementById(cat.count).textContent = '0';
-            });
-
-            // Organizar pedidos por categoria
-            for (const [orderId, order] of filteredOrders) {
-                const status = order.orderStatus || 'PLACED';
-                let categoryKey = null;
-
-                for (const [key, category] of Object.entries(categories)) {
-                    if (category.statuses.includes(status)) {
-                        categoryKey = key;
-                        break;
-                    }
-                }
-
-                if (categoryKey) {
-                    const container = document.getElementById(categories[categoryKey].element);
-                    container.appendChild(createOrderCard(order));
-                }
-            }
-
-            // Atualizar contadores
-            Object.entries(categories).forEach(([key, category]) => {
-                const count = document.getElementById(category.element).children.length;
-                document.getElementById(category.count).textContent = count;
-
-                // Mostrar estado vazio se necessário
-                if (count === 0) {
-                    const container = document.getElementById(category.element);
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-icon">📭</div>
-                            <p>Nenhum pedido nesta categoria</p>
-                        </div>
-                    `;
-                }
-            });
-        }
-
-        // Criar card de pedido
-        function createOrderCard(order) {
-            const card = document.createElement('div');
-            card.className = 'order-card';
-            card.onclick = () => openOrderModal(order);
-
-            const createdAt = new Date(order.createdAt);
-            const timeString = createdAt.toLocaleTimeString('pt-BR', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-
-            const total = formatCurrency(order.totalPrice || 0);
-            const paymentMethod = getPaymentMethodLabel(order.payments?.[0]);
-
-            card.innerHTML = `
-                <div class="order-header">
-                    <div class="order-id">#${order.displayId}</div>
-                    <div class="order-time">${timeString}</div>
-                </div>
-                <div class="order-customer">${order.customer?.name || 'Cliente'}</div>
-                <div class="order-total">${total}</div>
-                <div class="order-payment">${paymentMethod}</div>
-            `;
-
-            return card;
-        }
-
-        // Abrir modal de detalhes
-        function openOrderModal(order) {
-            const modalBody = document.getElementById('modalBody');
-            const modalTitle = document.getElementById('modalTitle');
-            
-            modalTitle.textContent = `Pedido #${order.displayId}`;
-            modalBody.innerHTML = generateOrderDetails(order);
-            modal.style.display = 'block';
-        }
-
-        // Fechar modal
-        function closeModal() {
-            modal.style.display = 'none';
-        }
-
-        // Gerar HTML dos detalhes do pedido
-        function generateOrderDetails(order) {
-            const status = getStatusLabel(order.orderStatus);
-            const createdAt = new Date(order.createdAt).toLocaleString('pt-BR');
-            
-            let html = `
-                <div class="detail-section">
-                    <div class="detail-title">Informações Gerais</div>
-                    <div class="detail-item">
-                        <span class="detail-label">Status:</span>
-                        <span class="detail-value">${status}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Data/Hora:</span>
-                        <span class="detail-value">${createdAt}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Tipo:</span>
-                        <span class="detail-value">${order.orderType === 'DELIVERY' ? 'Delivery' : 'Retirada'}</span>
-                    </div>
-                </div>
-            `;
-
-            // Dados do cliente
-            if (order.customer) {
-                html += `
-                    <div class="detail-section">
-                        <div class="detail-title">Cliente</div>
-                        <div class="detail-item">
-                            <span class="detail-label">Nome:</span>
-                            <span class="detail-value">${order.customer.name || 'N/A'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Telefone:</span>
-                            <span class="detail-value">${order.customer.phone || 'N/A'}</span>
-                        </div>
-                    </div>
-                `;
-            }
-
-            // Endereço de entrega
-            if (order.deliveryAddress && order.orderType === 'DELIVERY') {
-                const addr = order.deliveryAddress;
-                html += `
-                    <div class="detail-section">
-                        <div class="detail-title">Endereço de Entrega</div>
-                        <div class="detail-item">
-                            <span class="detail-label">Rua:</span>
-                            <span class="detail-value">${addr.streetName || ''} ${addr.streetNumber || ''}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Complemento:</span>
-                            <span class="detail-value">${addr.complement || 'N/A'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Bairro:</span>
-                            <span class="detail-value">${addr.neighborhood || 'N/A'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Cidade:</span>
-                            <span class="detail-value">${addr.city || 'N/A'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">CEP:</span>
-                            <span class="detail-value">${addr.postalCode || 'N/A'}</span>
-                        </div>
-                        ${addr.reference ? `
-                        <div class="detail-item">
-                            <span class="detail-label">Referência:</span>
-                            <span class="detail-value">${addr.reference}</span>
-                        </div>
-                        ` : ''}
-                    </div>
-                `;
-            }
-
-            // Itens do pedido
-            if (order.items && order.items.length > 0) {
-                html += `
-                    <div class="detail-section">
-                        <div class="detail-title">Itens do Pedido</div>
-                        <ul class="item-list">
-                `;
-
-                order.items.forEach(item => {
-                    html += `
-                        <li class="item-card">
-                            <div class="item-name">${item.quantity}x ${item.name}</div>
-                            <div class="item-details">
-                                <strong>Preço unitário:</strong> ${formatCurrency(item.unitPrice)}<br>
-                                <strong>Total:</strong> ${formatCurrency(item.totalPrice)}
-                                ${item.observations ? `<br><strong>Observações:</strong> ${item.observations}` : ''}
-                            </div>
-                        </li>
-                    `;
-                });
-
-                html += `</ul></div>`;
-            }
-
-            // Pagamento
-            if (order.payments && order.payments.length > 0) {
-                const payment = order.payments[0];
-                html += `
-                    <div class="detail-section">
-                        <div class="detail-title">Pagamento</div>
-                        <div class="detail-item">
-                            <span class="detail-label">Método:</span>
-                            <span class="detail-value">${getPaymentMethodLabel(payment)}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Valor:</span>
-                            <span class="detail-value">${formatCurrency(payment.value)}</span>
-                        </div>
-                        ${payment.changeFor ? `
-                        <div class="detail-item">
-                            <span class="detail-label">Troco para:</span>
-                            <span class="detail-value">${formatCurrency(payment.changeFor)}</span>
-                        </div>
-                        ` : ''}
-                    </div>
-                `;
-            }
-
-            // Totais
-            html += `
-                <div class="detail-section">
-                    <div class="detail-title">Totais</div>
-                    <div class="detail-item">
-                        <span class="detail-label">Subtotal:</span>
-                        <span class="detail-value">${formatCurrency(order.subTotal || 0)}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Taxa de entrega:</span>
-                        <span class="detail-value">${formatCurrency(order.deliveryFee || 0)}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label"><strong>Total:</strong></span>
-                        <span class="detail-value"><strong>${formatCurrency(order.totalPrice || 0)}</strong></span>
-                    </div>
-                </div>
-            `;
-
-            // Botões de ação
-            html += generateActionButtons(order);
-
-            return html;
-        }
-
-        // Gerar botões de ação
-        function generateActionButtons(order) {
-            const status = order.orderStatus || 'PLACED';
-            let buttons = '';
-
-            switch (status) {
-                case 'PLACED':
-                    buttons = `
-                        <button class="btn btn-primary" onclick="confirmOrder('${order.id}')">Confirmar</button>
-                        <button class="btn btn-danger" onclick="cancelOrder('${order.id}')">Cancelar</button>
-                    `;
-                    break;
-                case 'CONFIRMED':
-                    buttons = `
-                        <button class="btn btn-info" onclick="dispatchOrder('${order.id}')">Despachar</button>
-                        <button class="btn btn-danger" onclick="cancelOrder('${order.id}')">Cancelar</button>
-                    `;
-                    break;
-                case 'DISPATCHED':
-                    buttons = `
-                        <button class="btn btn-danger" onclick="cancelOrder('${order.id}')">Cancelar</button>
-                    `;
-                    break;
-            }
-
-            return buttons ? `<div class="action-buttons">${buttons}</div>` : '';
-        }
-
-        // Funções auxiliares
-        function getStatusLabel(status) {
-            const statusMap = {
-                'PLACED': 'Novo Pedido',
-                'CONFIRMED': 'Confirmado',
-                'DISPATCHED': 'Despachado',
-                'CONCLUDED': 'Concluído',
-                'CANCELLED': 'Cancelado'
-            };
-            return statusMap[status] || status;
-        }
-
-        function getPaymentMethodLabel(payment) {
-            if (!payment) return 'N/A';
-            
-            const methodMap = {
-                'CASH': 'Dinheiro',
-                'CREDIT': 'Cartão de Crédito',
-                'DEBIT': 'Cartão de Débito',
-                'PIX': 'PIX',
-                'ONLINE': 'Online'
-            };
-            
-            return methodMap[payment.type] || payment.method || 'N/A';
-        }
-
-        function formatCurrency(value) {
-            return new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-            }).format(value / 100); // iFood API retorna valores em centavos
-        }
-
-        // Event listeners
-        searchInput.addEventListener('input', () => {
-            applyFilters();
-            renderOrders();
-        });
-
-        paymentFilter.addEventListener('change', () => {
-            applyFilters();
-            renderOrders();
-        });
-
-        // Fechar modal clicando fora
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                closeModal();
-            }
-        });
-
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('🏖️ Cabana Delivery iniciando...');
-            console.log('⚙️ Configuração da API:', {
-                merchantId: API_CONFIG.merchantId,
-                merchantUUID: API_CONFIG.merchantUUID,
-                pollingInterval: API_CONFIG.pollingInterval + 'ms',
-                baseUrl: API_CONFIG.baseUrl
-            });
-            
-            // Verificar se a função Netlify está acessível
-            console.log('🔧 Verificando função proxy...');
-            testNetlifyFunction();
-            
-            // Aplicar filtros iniciais
-            applyFilters();
-            renderOrders();
-            
-            console.log('✅ Aplicação inicializada, aguardando teste da função proxy...');
-        });
-
-        // Testar se a função Netlify está funcionando
-        async function testNetlifyFunction() {
-            try {
-                console.log('🔍 Testando função Netlify...');
-                const response = await fetch('/.netlify/functions/ifood-proxy', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        endpoint: '/test',
-                        method: 'GET'
-                    })
-                });
-                
-                const responseText = await response.text();
-                console.log('📋 Status da função Netlify:', response.status);
-                console.log('📋 Resposta da função:', responseText);
-                
-                if (response.status === 404) {
-                    console.error('❌ ERRO: Função Netlify não encontrada!');
-                    showToast('Erro: Função proxy não encontrada. Verifique o deploy.', 'error');
-                    updateConnectionStatus('error', 'Função proxy não encontrada');
-                } else {
-                    console.log('✅ Função Netlify está acessível, iniciando autenticação...');
-                    // Testar autenticação após um pequeno delay
-                    setTimeout(() => {
-                        authenticate();
-                    }, 500);
-                }
-            } catch (error) {
-                console.error('❌ Erro ao testar função Netlify:', error);
-                showToast('Erro ao acessar função proxy: ' + error.message, 'error');
-                // Tentar autenticar mesmo assim
-                setTimeout(() => {
-                    authenticate();
-                }, 1000);
-            }
-        }
-
-        // Cleanup ao sair da página
-        window.addEventListener('beforeunload', () => {
-            isPolling = false;
-            if (pollingTimer) {
-                clearTimeout(pollingTimer);
-            }
-        });
-    </script>
-</body>
-</html>
+    } catch (error) {
+        console.error('Erro no proxy:', error);
+        
+        return {
+            statusCode: 500,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                error: 'Erro interno do servidor',
+                message: error.message,
+                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            })
+        };
+    }
+};
