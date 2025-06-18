@@ -546,7 +546,7 @@
         const modal = document.getElementById('orderModal');
         const toast = document.getElementById('toast');
 
-        // Função para fazer requisições via proxy Netlify - compatível com formato funcionando
+        // Função para fazer requisições via proxy Netlify - corrigida para endpoint
         async function apiRequest(endpoint, options = {}) {
             const { method = 'GET', body, requiresAuth = true } = options;
             
@@ -570,9 +570,9 @@
                 console.log('📋 Headers enviados:', headers);
                 console.log('📋 Body enviado:', body);
                 
-                // Usa o formato do script.js funcionando
+                // Usa 'endpoint' para ser consistente
                 const requestPayload = {
-                    path: endpoint,
+                    endpoint: endpoint,  // ← Corrigido de 'path' para 'endpoint'
                     method,
                     headers,
                     body: body ? JSON.stringify(body) : null
@@ -614,7 +614,7 @@
             }
         }
 
-        // Autenticação OAuth2 - baseada no código funcionando do script.js
+        // Autenticação OAuth2 - corrigida para usar endpoint
         async function authenticate() {
             try {
                 updateConnectionStatus('connecting', 'Autenticando...');
@@ -624,7 +624,7 @@
                     clientSecret: API_CONFIG.clientSecret.substring(0, 10) + '...' // Mostrar só início
                 });
                 
-                // Formato exato do script.js que funciona
+                // Formato correto para o proxy
                 const formData = new URLSearchParams();
                 formData.append('grantType', 'client_credentials');
                 formData.append('clientId', API_CONFIG.clientId);
@@ -636,7 +636,7 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        path: '/authentication/v1.0/oauth/token',
+                        endpoint: '/authentication/v1.0/oauth/token',  // ← Corrigido de 'path' para 'endpoint'
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded'
@@ -1268,7 +1268,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        path: '/test',
+                        endpoint: '/test',  // ← Corrigido para usar 'endpoint'
                         method: 'GET'
                     })
                 });
