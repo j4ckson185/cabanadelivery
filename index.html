@@ -595,6 +595,7 @@
         async function authenticate() {
             try {
                 updateConnectionStatus('connecting', 'Autenticando...');
+                console.log('Iniciando autenticação com iFood...');
                 
                 const response = await apiRequest('/authentication/v1.0/oauth/token', {
                     method: 'POST',
@@ -606,33 +607,52 @@
                     }
                 });
 
+                console.log('Resposta da autenticação:', response);
+
                 if (response.accessToken) {
                     accessToken = response.accessToken;
+                    console.log('Token de acesso obtido com sucesso');
                     updateConnectionStatus('connected', 'Conectado');
                     showToast('Conectado com sucesso ao iFood!', 'success');
                     startPolling();
                     return true;
                 } else {
-                    throw new Error('Token de acesso não recebido');
+                    throw new Error('Token de acesso não recebido na resposta');
                 }
             } catch (error) {
-                console.error('Erro na autenticação:', error);
+                console.error('Erro detalhado na autenticação:', error);
                 updateConnectionStatus('error', 'Erro de conexão');
                 showToast('Erro ao conectar com o iFood: ' + error.message, 'error');
+                
+                // Tentar novamente em 10 segundos
+                setTimeout(() => {
+                    console.log('Tentando reautenticar...');
+                    authenticate();
+                }, 10000);
+                
                 return false;
             }
         }
 
         // Polling unificado
         async function startPolling() {
-            if (isPolling) return;
+            if (isPolling) {
+                console.log('Polling já está ativo');
+                return;
+            }
+            
             isPolling = true;
+            console.log('Iniciando polling a cada 30 segundos...');
 
             const poll = async () => {
                 try {
+                    console.log('Fazendo polling para novos eventos...');
                     const events = await apiRequest('/events/v1.0/events:polling');
                     
+                    console.log(`Polling retornou ${events?.length || 0} eventos`);
+                    
                     if (events && events.length > 0) {
+                        console.log('Eventos recebidos:', events);
                         await processEvents(events);
                         await acknowledgeEvents(events.map(e => e.id));
                     }
@@ -640,51 +660,79 @@
                     console.error('Erro no polling:', error);
                     
                     if (error.message.includes('401') || error.message.includes('403')) {
-                        // Token expirado, tentar renovar
+                        console.log('Token expirado, tentando renovar...');
                         isPolling = false;
                         await authenticate();
                         return;
+                    } else if (error.message.includes('500') || error.message.includes('502') || error.message.includes('503')) {
+                        console.log('Erro do servidor iFood, tentando novamente em 60 segundos...');
+                        updateConnectionStatus('error', 'Servidor iFood indisponível');
+                        if (isPolling) {
+                            pollingTimer = setTimeout(poll, 60000); // Aguardar 1 minuto em caso de erro do servidor
+                        }
+                        return;
                     }
+                    
+                    updateConnectionStatus('error', 'Erro no polling');
+                    showToast('Erro ao buscar eventos: ' + error.message, 'error');
                 }
 
                 if (isPolling) {
+                    updateConnectionStatus('connected', 'Conectado');
                     pollingTimer = setTimeout(poll, API_CONFIG.pollingInterval);
                 }
             };
 
+            // Iniciar o primeiro polling
             poll();
         }
 
         // Processar eventos
         async function processEvents(events) {
+            console.log(`Processando ${events.length} eventos...`);
+            
             for (const event of events) {
                 try {
+                    console.log(`Processando evento: ${event.code} para pedido ${event.orderId}`);
+                    
                     if (event.code === 'PLC' || event.code === 'PLACED') {
                         // Novo pedido - buscar detalhes completos
+                        console.log(`Novo pedido recebido: ${event.orderId}`);
                         const orderDetails = await getOrderDetails(event.orderId);
                         if (orderDetails) {
                             orders.set(event.orderId, orderDetails);
+                            console.log(`Detalhes do pedido ${event.orderId} carregados:`, orderDetails);
                             showToast(`Novo pedido recebido: #${orderDetails.displayId}`, 'success');
+                        } else {
+                            console.error(`Falha ao carregar detalhes do pedido ${event.orderId}`);
                         }
                     } else {
                         // Atualização de status
+                        console.log(`Atualização de status para pedido ${event.orderId}: ${event.code}`);
                         const existingOrder = orders.get(event.orderId);
                         if (existingOrder) {
+                            const oldStatus = existingOrder.orderStatus;
                             existingOrder.orderStatus = event.code;
                             orders.set(event.orderId, existingOrder);
+                            console.log(`Status do pedido ${event.orderId} atualizado de ${oldStatus} para ${event.code}`);
+                            showToast(`Pedido #${existingOrder.displayId} - Status: ${getStatusLabel(event.code)}`, 'success');
                         } else {
                             // Se não temos o pedido, buscar detalhes
+                            console.log(`Pedido ${event.orderId} não encontrado no cache, buscando detalhes...`);
                             const orderDetails = await getOrderDetails(event.orderId);
                             if (orderDetails) {
                                 orders.set(event.orderId, orderDetails);
+                                console.log(`Pedido ${event.orderId} adicionado ao cache`);
                             }
                         }
                     }
                 } catch (error) {
-                    console.error('Erro ao processar evento:', error);
+                    console.error(`Erro ao processar evento ${event.id}:`, error);
+                    showToast(`Erro ao processar evento: ${error.message}`, 'error');
                 }
             }
 
+            console.log(`Total de pedidos no cache: ${orders.size}`);
             applyFilters();
             renderOrders();
         }
@@ -1138,12 +1186,21 @@
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('Cabana Delivery iniciando...');
+            console.log('Configuração da API:', {
+                merchantId: API_CONFIG.merchantId,
+                merchantUUID: API_CONFIG.merchantUUID,
+                pollingInterval: API_CONFIG.pollingInterval
+            });
+            
             // Aplicar filtros iniciais
             applyFilters();
             renderOrders();
             
             // Iniciar autenticação
             authenticate();
+            
+            console.log('Aplicação inicializada');
         });
 
         // Cleanup ao sair da página
