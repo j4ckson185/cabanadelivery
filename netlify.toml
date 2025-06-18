@@ -1,0 +1,44 @@
+# netlify.toml
+# Configuração para o Netlify
+
+[build]
+  # Diretório de publicação (onde está o index.html)
+  publish = "."
+  
+  # Comando de build (não necessário para HTML estático)
+  command = "echo 'Build concluído'"
+
+[functions]
+  # Diretório das funções Netlify
+  directory = "netlify/functions"
+
+[[redirects]]
+  # Redirecionamento para SPA (Single Page Application)
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+# Configurações de cabeçalhos para CORS
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+
+# Configurações específicas para arquivos estáticos
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Configurações de ambiente (se necessário)
+[context.production.environment]
+  NODE_ENV = "production"
+
+[context.branch-deploy.environment]
+  NODE_ENV = "development"
