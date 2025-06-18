@@ -60,15 +60,26 @@ exports.handler = async (event, context) => {
 
         if (body && method !== 'GET') {
             if (isFormData) {
-                // Para OAuth2, usar application/x-www-form-urlencoded
+                // Para OAuth2 padrão, usar application/x-www-form-urlencoded
                 const params = new URLSearchParams();
                 Object.keys(body).forEach(key => {
                     params.append(key, body[key]);
                 });
                 fetchOptions.body = params.toString();
                 fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            } else if (endpoint.includes('authentication')) {
+                // iFood authentication: Usar URLSearchParams para garantir formato correto
+                const params = new URLSearchParams();
+                params.append('grantType', body.grantType || body.grant_type || 'client_credentials');
+                params.append('clientId', body.clientId || body.client_id);
+                params.append('clientSecret', body.clientSecret || body.client_secret);
+                
+                fetchOptions.body = params.toString();
+                fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+                
+                console.log('Body da autenticação:', fetchOptions.body);
             } else {
-                // Para outras requisições, usar JSON
+                // Para outras requisições, usar JSON padrão
                 fetchOptions.body = JSON.stringify(body);
                 fetchOptions.headers['Content-Type'] = 'application/json';
             }
@@ -84,10 +95,34 @@ exports.handler = async (event, context) => {
         if (contentType && contentType.includes('application/json')) {
             responseData = await response.json();
         } else {
-            responseData = await response.text();
+            const textData = await response.text();
+            // Tentar parsear como JSON se possível
+            try {
+                responseData = JSON.parse(textData);
+            } catch {
+                responseData = { data: textData };
+            }
         }
 
         console.log('Dados da resposta:', responseData);
+
+        // Se a resposta não é OK, mas tem dados de erro estruturados
+        if (!response.ok && responseData) {
+            return {
+                statusCode: response.status,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': 'Content-Type',
+                    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    error: responseData.error || responseData.message || `HTTP ${response.status}`,
+                    details: responseData,
+                    status: response.status
+                })
+            };
+        }
 
         // Retornar resposta com headers CORS
         return {
