@@ -614,7 +614,7 @@
             }
         }
 
-        // Autenticação OAuth2 - corrigida para usar endpoint
+        // Autenticação OAuth2 - logs detalhados
         async function authenticate() {
             try {
                 updateConnectionStatus('connecting', 'Autenticando...');
@@ -630,13 +630,17 @@
                 formData.append('clientId', API_CONFIG.clientId);
                 formData.append('clientSecret', API_CONFIG.clientSecret);
 
+                console.log('📦 Enviando requisição de autenticação...');
+                console.log('🔗 URL:', '/.netlify/functions/ifood-proxy');
+                console.log('📋 Body URLSearchParams:', formData.toString().substring(0, 100) + '...');
+
                 const response = await fetch('/.netlify/functions/ifood-proxy', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        endpoint: '/authentication/v1.0/oauth/token',  // ← Corrigido de 'path' para 'endpoint'
+                        endpoint: '/authentication/v1.0/oauth/token',
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/x-www-form-urlencoded'
@@ -648,14 +652,24 @@
 
                 console.log(`📨 Status da resposta: ${response.status} ${response.statusText}`);
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ error: 'Resposta inválida' }));
-                    console.error('❌ Erro na resposta de autenticação:', errorData);
-                    throw new Error(`Erro na autenticação: ${response.status} - ${errorData.error || response.statusText}`);
+                // Log da resposta independente do status
+                const responseText = await response.text();
+                console.log('📄 Resposta completa (raw):', responseText);
+
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                    console.log('📊 Resposta parseada:', data);
+                } catch (parseError) {
+                    console.error('❌ Erro ao parsear resposta JSON:', parseError);
+                    console.log('📝 Resposta como texto:', responseText);
+                    throw new Error(`Resposta não é JSON válido: ${responseText}`);
                 }
 
-                const data = await response.json();
-                console.log('📨 Resposta completa da autenticação:', data);
+                if (!response.ok) {
+                    console.error('❌ Resposta não-OK:', data);
+                    throw new Error(`Erro na autenticação: ${response.status} - ${data.error || data.message || response.statusText}`);
+                }
 
                 if (data.accessToken) {
                     accessToken = data.accessToken;
@@ -666,13 +680,13 @@
                     startPolling();
                     return true;
                 } else {
-                    console.error('❌ Token não recebido na resposta:', data);
-                    throw new Error('Token não recebido');
+                    console.error('❌ Token não encontrado na resposta:', data);
+                    throw new Error('Token não recebido na resposta');
                 }
 
             } catch (error) {
                 console.error('❌ Erro detalhado na autenticação:', error);
-                console.error('🔍 Stack trace:', error.stack);
+                console.error('🔍 Stack trace completo:', error.stack);
                 updateConnectionStatus('error', 'Erro de conexão');
                 
                 showToast('Erro ao conectar: ' + error.message, 'error');
@@ -1251,53 +1265,14 @@
             applyFilters();
             renderOrders();
             
-            // Verificar função proxy e iniciar autenticação
-            console.log('🔧 Verificando função proxy...');
-            testNetlifyFunction();
+            // Iniciar autenticação diretamente (a função existe pelos logs)
+            console.log('🔐 Iniciando autenticação diretamente...');
+            setTimeout(() => {
+                authenticate();
+            }, 1000);
             
             console.log('✅ Aplicação inicializada');
         });
-
-        // Testar se a função Netlify está funcionando
-        async function testNetlifyFunction() {
-            try {
-                console.log('🔍 Testando função Netlify...');
-                
-                // Teste simples para verificar se a função existe
-                const response = await fetch('/.netlify/functions/ifood-proxy', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        endpoint: '/test',  // ← Corrigido para usar 'endpoint'
-                        method: 'GET'
-                    })
-                });
-                
-                console.log('📋 Status da função Netlify:', response.status);
-                
-                if (response.status === 404) {
-                    console.error('❌ ERRO: Função Netlify não encontrada!');
-                    showToast('ERRO: Função proxy não encontrada. Redeploy necessário!', 'error');
-                    updateConnectionStatus('error', 'Função proxy não encontrada');
-                    return false;
-                } else {
-                    console.log('✅ Função Netlify está acessível, iniciando autenticação...');
-                    // Inicia autenticação imediatamente
-                    setTimeout(() => {
-                        authenticate();
-                    }, 500);
-                    return true;
-                }
-            } catch (error) {
-                console.error('❌ Erro ao testar função Netlify:', error);
-                showToast('Erro ao acessar função proxy: ' + error.message, 'error');
-                // Ainda assim tenta autenticar
-                setTimeout(() => {
-                    authenticate();
-                }, 1000);
-                return false;
-            }
-        }
 
         // Cleanup ao sair da página
         window.addEventListener('beforeunload', () => {
