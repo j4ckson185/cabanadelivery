@@ -566,25 +566,31 @@
             }
 
             try {
-                console.log(`Fazendo requisição: ${method} ${endpoint}`);
-                console.log('Headers enviados:', headers);
-                console.log('Body enviado:', body);
+                console.log(`📤 Fazendo requisição: ${method} ${endpoint}`);
+                console.log('📋 Headers enviados:', headers);
+                console.log('📋 Body enviado:', body);
+                
+                const requestPayload = {
+                    endpoint,
+                    method,
+                    headers,
+                    body,
+                    isFormData
+                };
+                
+                console.log('📦 Payload completo para proxy:', requestPayload);
                 
                 const response = await fetch('/.netlify/functions/ifood-proxy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        endpoint,
-                        method,
-                        headers,
-                        body,
-                        isFormData
-                    })
+                    body: JSON.stringify(requestPayload)
                 });
+
+                console.log(`📨 Status da resposta: ${response.status} ${response.statusText}`);
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: 'Resposta inválida' }));
-                    console.error('Erro na resposta:', errorData);
+                    console.error('❌ Erro na resposta do proxy:', errorData);
                     
                     // Construir mensagem de erro mais detalhada
                     let errorMessage = `HTTP ${response.status}`;
@@ -599,11 +605,11 @@
                 }
 
                 const data = await response.json();
-                console.log(`Resposta recebida para ${endpoint}:`, data);
+                console.log(`✅ Resposta recebida para ${endpoint}:`, data);
                 
                 return data;
             } catch (error) {
-                console.error('Erro na requisição API:', error);
+                console.error('❌ Erro na requisição API:', error);
                 throw error;
             }
         }
@@ -612,7 +618,11 @@
         async function authenticate() {
             try {
                 updateConnectionStatus('connecting', 'Autenticando...');
-                console.log('Iniciando autenticação com iFood...');
+                console.log('🔐 Iniciando autenticação com iFood...');
+                console.log('🔑 Credenciais:', {
+                    clientId: API_CONFIG.clientId,
+                    clientSecret: API_CONFIG.clientSecret.substring(0, 10) + '...' // Mostrar só início
+                });
                 
                 // iFood authentication com formato correto
                 const response = await apiRequest('/authentication/v1.0/oauth/token', {
@@ -626,21 +636,23 @@
                     }
                 });
 
-                console.log('Resposta da autenticação:', response);
+                console.log('📨 Resposta completa da autenticação:', response);
 
                 if (response && (response.accessToken || response.access_token)) {
                     accessToken = response.accessToken || response.access_token;
-                    console.log('Token de acesso obtido com sucesso');
+                    console.log('✅ Token de acesso obtido com sucesso');
+                    console.log('🎫 Token (primeiros 20 chars):', accessToken.substring(0, 20) + '...');
                     updateConnectionStatus('connected', 'Conectado');
                     showToast('Conectado com sucesso ao iFood!', 'success');
                     startPolling();
                     return true;
                 } else {
-                    console.error('Resposta da autenticação inválida:', response);
+                    console.error('❌ Resposta da autenticação sem token:', response);
                     throw new Error('Token de acesso não recebido. Resposta: ' + JSON.stringify(response));
                 }
             } catch (error) {
-                console.error('Erro detalhado na autenticação:', error);
+                console.error('❌ Erro detalhado na autenticação:', error);
+                console.error('🔍 Stack trace:', error.stack);
                 updateConnectionStatus('error', 'Erro de conexão');
                 
                 // Mostrar erro mais detalhado
@@ -652,7 +664,7 @@
                 showToast('Erro ao conectar: ' + errorMessage, 'error');
                 
                 // Tentar novamente em 15 segundos
-                console.log('Tentando reautenticar em 15 segundos...');
+                console.log('⏰ Tentando reautenticar em 15 segundos...');
                 setTimeout(() => {
                     authenticate();
                 }, 15000);
@@ -1213,27 +1225,29 @@
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('Cabana Delivery iniciando...');
-            console.log('Configuração da API:', {
+            console.log('🏖️ Cabana Delivery iniciando...');
+            console.log('⚙️ Configuração da API:', {
                 merchantId: API_CONFIG.merchantId,
                 merchantUUID: API_CONFIG.merchantUUID,
-                pollingInterval: API_CONFIG.pollingInterval
+                pollingInterval: API_CONFIG.pollingInterval + 'ms',
+                baseUrl: API_CONFIG.baseUrl
             });
-            
-            // Verificar se a função Netlify está acessível
-            testNetlifyFunction();
             
             // Aplicar filtros iniciais
             applyFilters();
             renderOrders();
             
-            console.log('Aplicação inicializada');
+            // Verificar função proxy e iniciar autenticação
+            console.log('🔧 Verificando função proxy...');
+            testNetlifyFunction();
+            
+            console.log('✅ Aplicação inicializada');
         });
 
         // Testar se a função Netlify está funcionando
         async function testNetlifyFunction() {
             try {
-                console.log('Testando função Netlify...');
+                console.log('🔍 Testando função Netlify...');
                 const response = await fetch('/.netlify/functions/ifood-proxy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1243,28 +1257,24 @@
                     })
                 });
                 
-                console.log('Status da função Netlify:', response.status);
+                const responseText = await response.text();
+                console.log('📋 Status da função Netlify:', response.status);
+                console.log('📋 Resposta da função:', responseText);
                 
                 if (response.status === 404) {
-                    console.error('ERRO: Função Netlify não encontrada!');
+                    console.error('❌ ERRO: Função Netlify não encontrada!');
                     showToast('Erro: Função proxy não encontrada. Verifique o deploy.', 'error');
                     updateConnectionStatus('error', 'Função proxy não encontrada');
-                } else if (response.status === 200 || response.status === 500) {
-                    console.log('Função Netlify está acessível');
-                    // Testar autenticação após um pequeno delay
-                    setTimeout(() => {
-                        authenticate();
-                    }, 500);
                 } else {
-                    console.log('Função Netlify respondeu com status:', response.status);
-                    // Ainda assim tentar autenticar
+                    console.log('✅ Função Netlify está acessível, iniciando autenticação...');
+                    // Testar autenticação após um pequeno delay
                     setTimeout(() => {
                         authenticate();
                     }, 500);
                 }
             } catch (error) {
-                console.error('Erro ao testar função Netlify:', error);
-                showToast('Erro ao acessar função proxy', 'error');
+                console.error('❌ Erro ao testar função Netlify:', error);
+                showToast('Erro ao acessar função proxy: ' + error.message, 'error');
                 // Tentar autenticar mesmo assim
                 setTimeout(() => {
                     authenticate();
