@@ -29,7 +29,7 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        const { endpoint, method = 'GET', body, headers = {} } = JSON.parse(event.body);
+        const { endpoint, method = 'GET', body, headers = {}, isFormData = false } = JSON.parse(event.body);
         
         if (!endpoint) {
             return {
@@ -47,18 +47,31 @@ exports.handler = async (event, context) => {
 
         console.log(`Fazendo requisição: ${method} ${fullUrl}`);
         console.log('Headers:', headers);
+        console.log('Body:', body);
+        console.log('Is Form Data:', isFormData);
         
         const fetchOptions = {
             method,
             headers: {
-                'Content-Type': 'application/json',
                 'User-Agent': 'Cabana-Delivery/1.0',
                 ...headers
             }
         };
 
         if (body && method !== 'GET') {
-            fetchOptions.body = JSON.stringify(body);
+            if (isFormData) {
+                // Para OAuth2, usar application/x-www-form-urlencoded
+                const params = new URLSearchParams();
+                Object.keys(body).forEach(key => {
+                    params.append(key, body[key]);
+                });
+                fetchOptions.body = params.toString();
+                fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            } else {
+                // Para outras requisições, usar JSON
+                fetchOptions.body = JSON.stringify(body);
+                fetchOptions.headers['Content-Type'] = 'application/json';
+            }
         }
 
         const response = await fetch(fullUrl, fetchOptions);
