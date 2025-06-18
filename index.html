@@ -815,15 +815,64 @@
             }
         }
 
-        // Confirmar eventos
+// Confirmar eventos
         async function acknowledgeEvents(eventIds) {
+            if (!eventIds || eventIds.length === 0) {
+                console.log('📝 Nenhum evento para confirmar');
+                return;
+            }
+            
             try {
-                await apiRequest('/events/v1.0/events/acknowledgment', {
+                console.log('🔔 Confirmando eventos:', eventIds);
+                
+                // Primeira tentativa: URL com dois pontos (mais comum na docs)
+                await apiRequest('/events/v1.0/events:acknowledgment', {
                     method: 'POST',
                     body: { eventIds }
                 });
+                
+                console.log('✅ Eventos confirmados com sucesso (URL com :)');
+                return;
+                
             } catch (error) {
-                console.error('Erro ao confirmar eventos:', error);
+                console.error('❌ Erro ao confirmar eventos (URL com :):', error);
+                
+                try {
+                    // Segunda tentativa: URL com barra
+                    console.log('🔄 Tentando URL alternativa com barra...');
+                    await apiRequest('/events/v1.0/events/acknowledgment', {
+                        method: 'POST',
+                        body: { eventIds }
+                    });
+                    console.log('✅ Eventos confirmados com URL alternativa (barra)');
+                    return;
+                    
+                } catch (error2) {
+                    console.error('❌ Erro ao confirmar eventos (URL com barra):', error2);
+                    
+                    try {
+                        // Terceira tentativa: endpoint mais simples
+                        console.log('🔄 Tentando endpoint mais simples...');
+                        await apiRequest('/events/acknowledgment', {
+                            method: 'POST',
+                            body: { eventIds }
+                        });
+                        console.log('✅ Eventos confirmados com endpoint simples');
+                        return;
+                        
+                    } catch (error3) {
+                        console.error('❌ Erro ao confirmar eventos (endpoint simples):', error3);
+                        
+                        // Log detalhado dos erros
+                        console.error('🔍 Resumo dos erros de acknowledgment:', {
+                            tentativa1: error.message,
+                            tentativa2: error2.message,
+                            tentativa3: error3.message
+                        });
+                        
+                        showToast('Aviso: Problemas ao confirmar eventos. Verificar logs.', 'error');
+                    }
+                }
             }
         }
 
