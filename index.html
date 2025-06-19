@@ -1213,11 +1213,12 @@
         let pollingTimer = null;
         let isPolling = false;
 
-        // Variáveis do mapa
+        // Variáveis do mapa e Firebase
         let deliveryMap = null;
         let mapMarkers = new Map();
         let selectedOrders = new Set();
         let deliveryAssignments = new Map(); // orderId -> deliveryInfo
+        let unsubscribeAssignments = null; // Para gerenciar o listener do Firebase
 
         // Coordenadas da loja
         const STORE_LOCATION = {
