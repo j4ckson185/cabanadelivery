@@ -352,14 +352,10 @@
             margin-top: 1rem;
             padding-top: 1rem;
             border-top: 1px solid #e2e8f0;
-            display: flex !important;
+            display: flex;
             gap: 0.5rem;
             flex-wrap: wrap;
             min-height: 40px;
-            background: rgba(255, 0, 0, 0.1) !important; /* DEBUG: Fundo vermelho temporário */
-            border: 2px solid red !important; /* DEBUG: Borda vermelha temporária */
-            border-radius: 8px;
-            padding: 1rem;
         }
 
         .btn-small {
@@ -374,7 +370,7 @@
             transition: all 0.2s ease;
             flex: 1;
             min-width: 80px;
-            display: inline-block !important;
+            display: inline-block;
             text-align: center;
         }
 
@@ -406,7 +402,7 @@
             color: #6b7280;
             font-size: 0.875rem;
             font-weight: 500;
-            display: block !important;
+            display: block;
             width: 100%;
         }
 
@@ -1466,7 +1462,12 @@
                 new Date(order.preparationStartDateTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 
                 'Não informado';
 
-            return `
+            // CORREÇÃO: Gerar botões de ação do card
+            console.log(`🚨 GERANDO BOTÕES para card do pedido ${order.displayId}`);
+            const cardActionsHTML = generateCardActionButtons(order);
+            console.log(`🚨 Botões gerados para card:`, cardActionsHTML.substring(0, 100) + '...');
+
+            const cardHTML = `
                 <div class="order-card" onclick="openOrderModal('${order.id}')">
                     <div class="order-card-header">
                         <div class="order-status-badge ${statusClass}">
@@ -1525,6 +1526,10 @@
                         <div class="order-total">
                             <div class="total-label">Total do Pedido</div>
                             <div class="total-value">${total}</div>
+                        </div>
+                        
+                        <div class="card-actions">
+                            ${cardActionsHTML}
                         </div>
                     </div>
                 </div>
@@ -1835,7 +1840,7 @@
             return html;
         }
 
-        // Gerar botões de ação para os cards (versão compacta)
+        // Gerar botões de ação para os cards (versão compacta) - CORRIGIDA
         function generateCardActionButtons(order) {
             console.log(`🚨 INICIO generateCardActionButtons`);
             console.log(`🚨 Pedido:`, order.displayId, 'ID:', order.id, 'Status:', order.orderStatus);
@@ -1844,7 +1849,6 @@
             
             console.log(`🚨 Status processado: ${status}`);
 
-            // SEMPRE retornar algum botão para debug
             let buttons = '';
 
             if (status === 'PLACED' || status === 'PLC') {
