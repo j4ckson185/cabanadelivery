@@ -1213,12 +1213,12 @@
         let pollingTimer = null;
         let isPolling = false;
 
-        // Variáveis do mapa e Firebase
-        let deliveryMap = null;
-        let mapMarkers = new Map();
-        let selectedOrders = new Set();
-        let deliveryAssignments = new Map(); // orderId -> deliveryInfo
-        let unsubscribeAssignments = null; // Para gerenciar o listener do Firebase
+// Variáveis do mapa e Firebase
+let deliveryMap = null;
+let mapMarkers = new Map();
+let selectedOrders = new Set();
+let deliveryAssignments = new Map(); // orderId -> deliveryInfo
+let unsubscribeAssignments = null; // Para gerenciar o listener do Firebase
 
         // Coordenadas da loja
         const STORE_LOCATION = {
@@ -3015,6 +3015,72 @@
                 showToast('Erro ao enviar pedidos', 'error');
             }
         }
+
+        // Configurar listener em tempo real para delivery assignments
+async function setupDeliveryAssignmentsListener() {
+    // Limpar listener anterior se existir
+    if (unsubscribeAssignments) {
+        unsubscribeAssignments();
+    }
+
+    try {
+        console.log('🔧 Configurando listener de delivery assignments...');
+        
+        // Importar funções do Firebase
+        const { collection, onSnapshot } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        
+        const assignmentsRef = collection(window.firebaseDb, 'deliveryAssignments');
+        
+        unsubscribeAssignments = onSnapshot(assignmentsRef, (snapshot) => {
+            console.log(`📱 Recebida atualização do Firebase: ${snapshot.size} assignments`);
+            let hasChanges = false;
+            
+            snapshot.docChanges().forEach((change) => {
+                const data = change.doc.data();
+                const orderId = change.doc.id;
+                
+                console.log(`📱 Mudança detectada: ${change.type} - ${orderId} - Status: ${data.status}`);
+                
+                if (change.type === 'added' || change.type === 'modified') {
+                    const oldAssignment = deliveryAssignments.get(orderId);
+                    deliveryAssignments.set(orderId, {
+                        deliveryId: data.deliveryId,
+                        deliveryName: data.deliveryName,
+                        status: data.status,
+                        assignedAt: data.assignedAt,
+                        acceptedAt: data.acceptedAt,
+                        dispatchedAt: data.dispatchedAt,
+                        concludedAt: data.concludedAt
+                    });
+                    
+                    // Verificar se houve mudança de status
+                    if (oldAssignment && oldAssignment.status !== data.status) {
+                        console.log(`📱 Status do pedido ${orderId} mudou: ${oldAssignment.status} → ${data.status}`);
+                        hasChanges = true;
+                    } else if (!oldAssignment) {
+                        console.log(`📱 Nova atribuição: ${orderId} → ${data.deliveryName} (${data.status})`);
+                        hasChanges = true;
+                    }
+                } else if (change.type === 'removed') {
+                    deliveryAssignments.delete(orderId);
+                    hasChanges = true;
+                }
+            });
+            
+            // Atualizar mapa se estiver aberto e houve mudanças
+            if (hasChanges && deliveryMap) {
+                console.log('🗺️ Atualizando mapa devido a mudanças nos assignments');
+                loadMapOrders();
+            }
+        }, (error) => {
+            console.error('❌ Erro no listener de assignments:', error);
+        });
+        
+        console.log('✅ Listener de delivery assignments configurado com sucesso');
+    } catch (error) {
+        console.error('❌ Erro ao configurar listener de assignments:', error);
+    }
+}
         
         // Salvar atribuições no Firebase (usando Web SDK)
         async function saveDeliveryAssignments(orderIds, deliveryId, deliveryName) {
@@ -3039,6 +3105,7 @@
                                 delivery: order.delivery,
                                 total: order.total,
                                 items: order.items,
+                                payments: order.payments,
                                 orderStatus: order.orderStatus,
                                 createdAt: order.createdAt
                             }
@@ -3139,22 +3206,30 @@
             console.log('🚨 Chamando renderOrders...');
             renderOrders();
             
-            // Iniciar autenticação
-            setTimeout(() => {
-                console.log('🚨 Iniciando autenticação...');
-                authenticate();
-            }, 1000);
+            // Configurar listener do Firebase (independente da autenticação)
+setTimeout(() => {
+    console.log('🚨 Configurando listener do Firebase...');
+    setupDeliveryAssignmentsListener();
+}, 500);
+
+// Iniciar autenticação
+setTimeout(() => {
+    console.log('🚨 Iniciando autenticação...');
+    authenticate();
+}, 1000);
             
             console.log('🚨🚨🚨 INICIALIZAÇÃO TERMINOU 🚨🚨🚨');
         });
 
-        // Cleanup
-        window.addEventListener('beforeunload', () => {
-            isPolling = false;
-            if (pollingTimer) {
-                clearTimeout(pollingTimer);
-            }
-        });
+window.addEventListener('beforeunload', () => {
+    isPolling = false;
+    if (pollingTimer) {
+        clearTimeout(pollingTimer);
+    }
+    if (unsubscribeAssignments) {
+        unsubscribeAssignments();
+    }
+});
 
         // Tornar funções globais para serem acessíveis pelos event handlers inline
         window.confirmOrder = confirmOrder;
