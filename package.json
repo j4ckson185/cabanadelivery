@@ -1,0 +1,27 @@
+{
+  "name": "cabana-delivery",
+  "version": "1.0.0",
+  "description": "Sistema de gestão de pedidos e entregas para Cabana Delivery",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo 'Build concluído - usando Firebase Web SDK'",
+    "dev": "netlify dev",
+    "deploy": "netlify deploy --prod"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "keywords": [
+    "delivery",
+    "ifood",
+    "firebase",
+    "maps",
+    "entregadores"
+  ],
+  "author": "Cabana Delivery",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
