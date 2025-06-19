@@ -3,7 +3,7 @@
 
 exports.handler = async (event, context) => {
     console.log('🚀 Função proxy chamada:', event.httpMethod);
-    
+
     // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
         return {
@@ -31,7 +31,7 @@ exports.handler = async (event, context) => {
 
     try {
         console.log('📦 Event body recebido:', event.body);
-        
+
         let requestData;
         try {
             requestData = JSON.parse(event.body || '{}');
@@ -46,22 +46,28 @@ exports.handler = async (event, context) => {
                 body: JSON.stringify({ error: 'JSON inválido no body' })
             };
         }
-        
+
         console.log('📋 Request data parseado:', JSON.stringify(requestData, null, 2));
-        
+
         // Suporta tanto 'path' quanto 'endpoint' para compatibilidade total
-        const endpoint = requestData.endpoint || requestData.path;
+        let endpoint = requestData.endpoint || requestData.path;
         const { method = 'GET', body, headers = {}, isAuth = false } = requestData;
-        
-        console.log('🔍 Valores extraídos:', { 
-            endpoint, 
-            method, 
+
+        // 🔧 CORREÇÃO: transformar ":" em "/" no endpoint
+        if (endpoint.includes(':')) {
+            console.log('🔧 Corrigindo endpoint com dois-pontos:', endpoint);
+            endpoint = endpoint.replace(/:/g, '/');
+        }
+
+        console.log('🔍 Valores extraídos:', {
+            endpoint,
+            method,
             hasBody: !!body,
             isAuth,
             bodyType: typeof body,
-            headersCount: Object.keys(headers).length 
+            headersCount: Object.keys(headers).length
         });
-        
+
         if (!endpoint) {
             console.error('❌ Endpoint/Path não fornecido:', { requestData });
             return {
@@ -70,7 +76,7 @@ exports.handler = async (event, context) => {
                     'Access-Control-Allow-Origin': '*',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     error: 'Endpoint é obrigatório',
                     received: requestData
                 })
@@ -81,7 +87,7 @@ exports.handler = async (event, context) => {
         const fullUrl = `${baseUrl}${endpoint}`;
 
         console.log(`🔗 Fazendo requisição: ${method} ${fullUrl}`);
-        
+
         const fetchOptions = {
             method,
             headers: {
@@ -95,7 +101,7 @@ exports.handler = async (event, context) => {
             console.log('🔄 Processando body - isAuth:', isAuth, 'endpoint:', endpoint);
             console.log('🔄 Body original:', body);
             console.log('🔄 Tipo do body:', typeof body);
-            
+
             if (isAuth === true) {
                 // MODO SIMPLES: Para autenticação OAuth2 - usar o body exatamente como veio
                 fetchOptions.body = body;
@@ -106,10 +112,8 @@ exports.handler = async (event, context) => {
                 // Fallback apenas se isAuth não for true
                 console.log('⚠️ Fallback: isAuth não é true, processando manualmente');
                 if (typeof body === 'string') {
-                    // Se já é string URLSearchParams, usar direto
                     fetchOptions.body = body;
                 } else if (typeof body === 'object') {
-                    // Se é objeto, converter para URLSearchParams
                     const params = new URLSearchParams();
                     params.append('grantType', body.grantType || 'client_credentials');
                     params.append('clientId', body.clientId || '');
@@ -121,7 +125,6 @@ exports.handler = async (event, context) => {
                 fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
                 console.log('⚠️ Fallback body final:', fetchOptions.body);
             } else {
-                // Para outras requisições - JSON
                 fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
                 fetchOptions.headers['Content-Type'] = 'application/json';
                 console.log('📄 Body JSON para outras requisições:', fetchOptions.body);
@@ -136,7 +139,7 @@ exports.handler = async (event, context) => {
             bodyLength: fetchOptions.body ? fetchOptions.body.length : 0,
             bodyPreview: fetchOptions.body ? fetchOptions.body.substring(0, 100) + '...' : 'null'
         });
-        
+
         console.log('🚀 ENVIANDO PARA IFOOD:');
         console.log('🎯 URL:', fullUrl);
         console.log('🎯 Method:', fetchOptions.method);
@@ -144,12 +147,12 @@ exports.handler = async (event, context) => {
         console.log('🎯 Body completo:', fetchOptions.body);
 
         const response = await fetch(fullUrl, fetchOptions);
-        
+
         console.log(`📨 Resposta recebida: ${response.status} ${response.statusText}`);
-        
+
         let responseData;
         const contentType = response.headers.get('content-type') || '';
-        
+
         if (contentType.includes('application/json')) {
             responseData = await response.json();
         } else {
@@ -163,7 +166,6 @@ exports.handler = async (event, context) => {
 
         console.log('✅ Dados da resposta processados:', responseData);
 
-        // Headers CORS padronizados
         const corsHeaders = {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -193,14 +195,14 @@ exports.handler = async (event, context) => {
 
     } catch (error) {
         console.error('❌ Erro geral no proxy:', error);
-        
+
         return {
             statusCode: 500,
             headers: {
                 'Access-Control-Allow-Origin': '*',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
                 error: 'Erro interno do servidor',
                 message: error.message,
                 details: error.toString()
