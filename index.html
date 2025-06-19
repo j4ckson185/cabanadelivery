@@ -391,6 +391,25 @@
             color: white;
         }
 
+        .status-final {
+            text-align: center;
+            padding: 0.75rem;
+            background: #f3f4f6;
+            border-radius: 6px;
+            color: #6b7280;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .no-actions {
+            text-align: center;
+            padding: 1rem;
+            color: #6b7280;
+            font-style: italic;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+
         .total-value {
             font-size: 1.5rem;
             font-weight: 700;
@@ -1338,7 +1357,14 @@
             const ordersArray = Array.from(filteredOrders.values())
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+            console.log(`🎨 Renderizando ${ordersArray.length} pedidos na categoria ${currentCategory}`);
+            ordersArray.forEach(order => {
+                console.log(`  📋 Pedido ${order.displayId}: Status ${order.orderStatus}`);
+            });
+
             ordersGrid.innerHTML = ordersArray.map(order => createOrderCard(order)).join('');
+            
+            console.log('✅ Renderização concluída - Cards criados na DOM');
         }
 
         function updateCounters() {
@@ -1471,14 +1497,11 @@
             
             // Gerar e inserir botões de ação
             const actionButtonsHTML = generateActionButtons(order);
-            console.log(`Modal ${orderId}: Botões de ação gerados:`, actionButtonsHTML);
+            console.log(`🔧 Modal ${orderId}: Botões de ação gerados:`, actionButtonsHTML ? 'Sim' : 'Nenhum');
             
-            if (actionButtonsHTML) {
-                actionSection.innerHTML = actionButtonsHTML;
-                actionSection.style.display = 'block';
-            } else {
-                actionSection.style.display = 'none';
-            }
+            // SEMPRE mostrar a seção de ações, mesmo que vazia
+            actionSection.innerHTML = actionButtonsHTML || '<div class="no-actions">Nenhuma ação disponível para este pedido</div>';
+            actionSection.style.display = 'block';
             
             modal.style.display = 'block';
         }
@@ -1765,6 +1788,8 @@
             const status = order.orderStatus || 'PLACED';
             let buttons = '';
 
+            console.log(`🔧 Gerando botões do CARD para pedido ${order.displayId} com status: ${status}`);
+
             switch (status) {
                 case 'PLACED':
                 case 'PLC':
@@ -1801,8 +1826,12 @@
                 case 'CON':
                 case 'CANCELLED': 
                 case 'CAN':
-                    // Nenhum botão para pedidos concluídos ou cancelados
-                    buttons = '';
+                    // Para pedidos finalizados, mostrar status apenas
+                    buttons = `
+                        <div class="status-final">
+                            <span class="status-text">Pedido ${status === 'CONCLUDED' || status === 'CON' ? 'Concluído' : 'Cancelado'}</span>
+                        </div>
+                    `;
                     break;
                 default:
                     // Para status não reconhecidos, mostrar apenas confirmar
@@ -1817,6 +1846,7 @@
                     break;
             }
 
+            console.log(`🔧 Botões do CARD gerados:`, buttons.replace(/\s+/g, ' ').substring(0, 100) + '...');
             return buttons;
         }
 
@@ -1825,7 +1855,7 @@
             const status = order.orderStatus || 'PLACED';
             let buttons = '';
 
-            console.log(`Gerando botões para pedido ${order.id} com status: ${status}`);
+            console.log(`🔧 Gerando botões do MODAL para pedido ${order.displayId} com status: ${status}`);
 
             switch (status) {
                 case 'PLACED':
@@ -1887,7 +1917,7 @@
                     break;
             }
 
-            console.log(`Botões gerados: ${buttons ? 'Sim' : 'Nenhum'}`);
+            console.log(`🔧 Botões do MODAL gerados: ${buttons ? 'Sim' : 'Nenhum'}`);
             return buttons;
         }
 
