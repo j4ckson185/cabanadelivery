@@ -829,9 +829,16 @@
                 `${address.streetName || ''} ${address.streetNumber || ''}, ${address.neighborhood || ''}`.trim() : 
                 'Retirada no local';
 
-            // Forma de pagamento
-            const mainPayment = order.payments?.methods?.[0];
-            const paymentText = mainPayment ? getPaymentMethodLabel(mainPayment) : 'N/A';
+// Forma de pagamento
+const mainPayment = order.payments?.methods?.[0];
+const paymentText = mainPayment ? getPaymentMethodLabel(mainPayment) : 'N/A';
+
+console.log('💳 DEBUG Payment:', {
+    hasPayments: !!order.payments,
+    methodsLength: order.payments?.methods?.length || 0,
+    mainPayment: mainPayment,
+    paymentText: paymentText
+});
 
             // Observações dos itens
             let observations = [];
