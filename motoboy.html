@@ -748,19 +748,20 @@
             let activeCount = 0;
 
             assignments.forEach(assignment => {
-                const createdAt = assignment.assignedAt ? new Date(assignment.assignedAt) : new Date();
-                const orderStatus = assignment.order?.orderStatus;
+                // Para relatórios, usar a data de conclusão se disponível, senão a data de atribuição
+                const dateToCheck = assignment.concludedAt ? new Date(assignment.concludedAt) : 
+                                  assignment.assignedAt ? new Date(assignment.assignedAt) : new Date();
                 
-                // Contar apenas pedidos concluídos para relatórios
-                if (orderStatus === 'CONCLUDED' || orderStatus === 'CON') {
-                    if (createdAt >= today) todayCount++;
-                    if (createdAt >= yesterday && createdAt < today) yesterdayCount++;
-                    if (createdAt >= week7Ago) week7Count++;
-                    if (createdAt >= month30Ago) month30Count++;
+                // Contar apenas pedidos concluídos (pelo motoboy) para relatórios
+                if (assignment.status === 'concluded') {
+                    if (dateToCheck >= today) todayCount++;
+                    if (dateToCheck >= yesterday && dateToCheck < today) yesterdayCount++;
+                    if (dateToCheck >= week7Ago) week7Count++;
+                    if (dateToCheck >= month30Ago) month30Count++;
                 }
                 
-                // Contar pedidos ativos (aceitos pelo entregador)
-                if (assignment.status === 'accepted') {
+                // Contar pedidos ativos (aceitos ou despachados pelo entregador)
+                if (assignment.status === 'accepted' || assignment.status === 'dispatched') {
                     activeCount++;
                 }
             });
@@ -776,9 +777,9 @@
         function renderOrders() {
             const ordersGrid = document.getElementById('ordersGrid');
             
-            // Filtrar apenas pedidos enviados ou aceitos
+            // Filtrar pedidos enviados, aceitos ou despachados (não sumir após despacho)
             const activeAssignments = Array.from(assignments.values()).filter(assignment => 
-                assignment.status === 'sent' || assignment.status === 'accepted'
+                assignment.status === 'sent' || assignment.status === 'accepted' || assignment.status === 'dispatched'
             );
 
             if (activeAssignments.length === 0) {
@@ -811,18 +812,29 @@
                 `${address.streetName || ''} ${address.streetNumber || ''}, ${address.neighborhood || ''}`.trim() : 
                 'Retirada no local';
 
-            // Botões baseados no status
+            // Status e botões baseados no status da atribuição
+            let statusText = '';
             let actionButtons = '';
+            
             if (assignment.status === 'sent') {
+                statusText = '📨 Pedido Enviado';
                 actionButtons = `
                     <button class="btn btn-accept" onclick="acceptOrder('${assignment.id}')">
                         ✅ Aceitar Pedido
                     </button>
                 `;
             } else if (assignment.status === 'accepted') {
+                statusText = '✅ Pedido Aceito';
                 actionButtons = `
                     <button class="btn btn-dispatch" onclick="dispatchOrder('${assignment.id}')">
                         🚀 Despachar Pedido
+                    </button>
+                `;
+            } else if (assignment.status === 'dispatched') {
+                statusText = '🚀 Pedido Despachado';
+                actionButtons = `
+                    <button class="btn" style="background: #f59e0b; color: white;" onclick="confirmDeliveryCode('${assignment.id}')">
+                        🔢 Confirmar Código
                     </button>
                 `;
             }
@@ -832,6 +844,7 @@
                     <div class="order-card-header">
                         <div class="order-id">#${order.displayId}</div>
                         <div class="order-time">${timeString} • ${dateString}</div>
+                        <div style="margin-top: 0.5rem; font-size: 0.875rem; opacity: 0.9;">${statusText}</div>
                     </div>
                     
                     <div class="order-card-body">
@@ -918,6 +931,72 @@
             } catch (error) {
                 console.error('❌ Erro ao despachar pedido:', error);
                 showToast('Erro ao despachar pedido', 'error');
+            }
+        }
+
+        // Confirmar código de entrega
+        async function confirmDeliveryCode(assignmentId) {
+            const assignment = assignments.get(assignmentId);
+            if (!assignment || !assignment.order) {
+                showToast('Pedido não encontrado', 'error');
+                return;
+            }
+
+            // Solicitar código do usuário
+            const code = prompt('Digite o código de confirmação de entrega (4 últimos dígitos do celular do cliente):');
+            
+            if (!code) {
+                return; // Usuário cancelou
+            }
+
+            if (code.length !== 4 || !/^\d{4}$/.test(code)) {
+                showToast('Código deve ter exatamente 4 dígitos', 'error');
+                return;
+            }
+
+            try {
+                console.log(`🔢 Confirmando código ${code} para pedido: ${assignment.order.id}`);
+
+                // Verificar código via API do iFood
+                const response = await fetch('/.netlify/functions/ifood-proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: `/order/v1.0/orders/${assignment.order.id}/verifyDeliveryCode`,
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${accessToken}` },
+                        body: { code: code }
+                    })
+                });
+
+                if (response.ok) {
+                    // Código confirmado com sucesso
+                    showToast('✅ Código confirmado com sucesso!', 'success');
+                    
+                    // Importar funções do Firebase
+                    const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                    
+                    // Atualizar status no Firebase para concluded
+                    const docRef = doc(window.firebaseDb, 'deliveryAssignments', assignmentId);
+                    await updateDoc(docRef, {
+                        status: 'concluded',
+                        concludedAt: new Date().toISOString(),
+                        deliveryCode: code,
+                        updatedAt: serverTimestamp()
+                    });
+
+                    console.log('✅ Pedido marcado como concluído');
+                    
+                } else {
+                    // Erro na verificação
+                    const errorData = await response.json();
+                    const errorMessage = errorData.description || 'Código incorreto. Use os 4 últimos números do celular do titular do pedido.';
+                    showToast(`❌ ${errorMessage}`, 'error');
+                }
+
+            } catch (error) {
+                console.error('❌ Erro ao confirmar código:', error);
+                showToast('Erro ao confirmar código de entrega', 'error');
             }
         }
 
@@ -1056,6 +1135,7 @@
         // Tornar funções globais
         window.acceptOrder = acceptOrder;
         window.dispatchOrder = dispatchOrder;
+        window.confirmDeliveryCode = confirmDeliveryCode;
         window.openOrderModal = openOrderModal;
         window.closeModal = closeModal;
         window.logout = logout;
