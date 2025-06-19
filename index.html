@@ -421,6 +421,18 @@
             opacity: 0.3;
         }
 
+        .real-order-badge {
+            background: linear-gradient(45deg, #4CAF50, #81C784);
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 0.5rem;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
@@ -796,7 +808,7 @@
                     
                     if (event.code === 'PLC' || event.code === 'PLACED') {
                         // Novo pedido - buscar detalhes completos
-                        console.log(`Novo pedido recebido: ${event.orderId}`);
+                        console.log(`🎉 NOVO PEDIDO REAL: ${event.orderId}`);
                         const orderDetails = await getOrderDetails(event.orderId);
                         if (orderDetails) {
                             orders.set(event.orderId, orderDetails);
@@ -820,8 +832,11 @@
                             console.log(`Pedido ${event.orderId} não encontrado no cache, buscando detalhes...`);
                             const orderDetails = await getOrderDetails(event.orderId);
                             if (orderDetails) {
+                                // Definir o status do evento no pedido
+                                orderDetails.orderStatus = event.code;
                                 orders.set(event.orderId, orderDetails);
-                                console.log(`Pedido ${event.orderId} adicionado ao cache`);
+                                console.log(`Pedido ${event.orderId} adicionado ao cache com status ${event.code}`);
+                                showToast(`🆕 Pedido Real: #${orderDetails.displayId} - ${getStatusLabel(event.code)}`, 'success');
                             }
                         }
                     }
@@ -994,11 +1009,29 @@
 
         // Renderizar pedidos
         function renderOrders() {
+            console.log('🎨 Renderizando pedidos...', orders.size, 'pedidos no total');
+            
             const categories = {
-                emPreparo: { statuses: ['PLACED', 'CONFIRMED'], element: 'ordersEmPreparo', count: 'countEmPreparo' },
-                aCaminho: { statuses: ['DISPATCHED'], element: 'ordersACaminho', count: 'countACaminho' },
-                concluido: { statuses: ['CONCLUDED'], element: 'ordersConcluido', count: 'countConcluido' },
-                cancelado: { statuses: ['CANCELLED'], element: 'ordersCancelado', count: 'countCancelado' }
+                emPreparo: { 
+                    statuses: ['PLACED', 'CONFIRMED', 'PLC', 'CFM'], 
+                    element: 'ordersEmPreparo', 
+                    count: 'countEmPreparo' 
+                },
+                aCaminho: { 
+                    statuses: ['DISPATCHED', 'DSP', 'DDCS'], 
+                    element: 'ordersACaminho', 
+                    count: 'countACaminho' 
+                },
+                concluido: { 
+                    statuses: ['CONCLUDED', 'CON'], 
+                    element: 'ordersConcluido', 
+                    count: 'countConcluido' 
+                },
+                cancelado: { 
+                    statuses: ['CANCELLED', 'CAN'], 
+                    element: 'ordersCancelado', 
+                    count: 'countCancelado' 
+                }
             };
 
             // Limpar categorias
@@ -1007,21 +1040,38 @@
                 document.getElementById(cat.count).textContent = '0';
             });
 
+            // Debug: listar todos os status únicos
+            const allStatuses = new Set();
+            for (const [orderId, order] of filteredOrders) {
+                allStatuses.add(order.orderStatus);
+            }
+            console.log('🔍 Status únicos encontrados:', Array.from(allStatuses));
+
             // Organizar pedidos por categoria
             for (const [orderId, order] of filteredOrders) {
                 const status = order.orderStatus || 'PLACED';
                 let categoryKey = null;
 
+                console.log(`📋 Processando pedido ${order.displayId || orderId} com status: ${status}`);
+
                 for (const [key, category] of Object.entries(categories)) {
                     if (category.statuses.includes(status)) {
                         categoryKey = key;
+                        console.log(`✅ Pedido ${order.displayId || orderId} categorizado como: ${key}`);
                         break;
                     }
                 }
 
                 if (categoryKey) {
                     const container = document.getElementById(categories[categoryKey].element);
-                    container.appendChild(createOrderCard(order));
+                    const orderCard = createOrderCard(order);
+                    container.appendChild(orderCard);
+                } else {
+                    console.log(`⚠️ Status não reconhecido: ${status} para pedido ${order.displayId || orderId}`);
+                    // Se status não reconhecido, colocar em "Em Preparo" como fallback
+                    const container = document.getElementById(categories.emPreparo.element);
+                    const orderCard = createOrderCard(order);
+                    container.appendChild(orderCard);
                 }
             }
 
@@ -1041,6 +1091,8 @@
                     `;
                 }
             });
+
+            console.log('✅ Renderização concluída');
         }
 
         // Criar card de pedido
@@ -1058,9 +1110,13 @@
             const total = formatCurrency(order.totalPrice || 0);
             const paymentMethod = getPaymentMethodLabel(order.payments?.[0]);
 
+            // Verificar se é pedido real (tem ID do iFood) ou simulado
+            const isRealOrder = !order.id.startsWith('test-');
+            const realOrderBadge = isRealOrder ? '<span class="real-order-badge">iFood</span>' : '';
+
             card.innerHTML = `
                 <div class="order-header">
-                    <div class="order-id">#${order.displayId}</div>
+                    <div class="order-id">#${order.displayId || order.id}${realOrderBadge}</div>
                     <div class="order-time">${timeString}</div>
                 </div>
                 <div class="order-customer">${order.customer?.name || 'Cliente'}</div>
@@ -1076,7 +1132,7 @@
             const modalBody = document.getElementById('modalBody');
             const modalTitle = document.getElementById('modalTitle');
             
-            modalTitle.textContent = `Pedido #${order.displayId}`;
+            modalTitle.textContent = `Pedido #${order.displayId || order.id}`;
             modalBody.innerHTML = generateOrderDetails(order);
             modal.style.display = 'block';
         }
@@ -1090,6 +1146,7 @@
         function generateOrderDetails(order) {
             const status = getStatusLabel(order.orderStatus);
             const createdAt = new Date(order.createdAt).toLocaleString('pt-BR');
+            const isRealOrder = !order.id.startsWith('test-');
             
             let html = `
                 <div class="detail-section">
@@ -1105,6 +1162,10 @@
                     <div class="detail-item">
                         <span class="detail-label">Tipo:</span>
                         <span class="detail-value">${order.orderType === 'DELIVERY' ? 'Delivery' : 'Retirada'}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Origem:</span>
+                        <span class="detail-value">${isRealOrder ? '🎉 Pedido Real iFood' : '📱 Pedido Simulado'}</span>
                     </div>
                 </div>
             `;
@@ -1229,8 +1290,10 @@
                 </div>
             `;
 
-            // Botões de ação
-            html += generateActionButtons(order);
+            // Botões de ação (apenas para pedidos reais)
+            if (isRealOrder) {
+                html += generateActionButtons(order);
+            }
 
             return html;
         }
@@ -1242,18 +1305,22 @@
 
             switch (status) {
                 case 'PLACED':
+                case 'PLC':
                     buttons = `
                         <button class="btn btn-primary" onclick="confirmOrder('${order.id}')">Confirmar</button>
                         <button class="btn btn-danger" onclick="cancelOrder('${order.id}')">Cancelar</button>
                     `;
                     break;
                 case 'CONFIRMED':
+                case 'CFM':
                     buttons = `
                         <button class="btn btn-info" onclick="dispatchOrder('${order.id}')">Despachar</button>
                         <button class="btn btn-danger" onclick="cancelOrder('${order.id}')">Cancelar</button>
                     `;
                     break;
                 case 'DISPATCHED':
+                case 'DSP':
+                case 'DDCS':
                     buttons = `
                         <button class="btn btn-danger" onclick="cancelOrder('${order.id}')">Cancelar</button>
                     `;
@@ -1267,10 +1334,16 @@
         function getStatusLabel(status) {
             const statusMap = {
                 'PLACED': 'Novo Pedido',
+                'PLC': 'Novo Pedido',
                 'CONFIRMED': 'Confirmado',
+                'CFM': 'Confirmado',
                 'DISPATCHED': 'Despachado',
+                'DSP': 'Despachado',
+                'DDCS': 'A Caminho', // Driver Dispatch Customer Service
                 'CONCLUDED': 'Concluído',
-                'CANCELLED': 'Cancelado'
+                'CON': 'Concluído',
+                'CANCELLED': 'Cancelado',
+                'CAN': 'Cancelado'
             };
             return statusMap[status] || status;
         }
