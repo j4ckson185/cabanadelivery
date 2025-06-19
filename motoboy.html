@@ -600,7 +600,12 @@
 
         // Mapeamento de emails para IDs
         const EMAIL_TO_DELIVERY_ID = {
-            'jackson_division@hotmail.com': 'jackson'
+            'jackson_division@hotmail.com': 'jackson',
+            'narlisonmedeiros04@gmail.com': 'narlison',
+            'rafaeljudson.profissional@gmail.com': 'rafael',
+            'matheusmoura175@gmail.com': 'matheus',
+            'boazd3@gmail.com': 'boaz',
+            'andrade88210@gmail.com': 'gabriel'
         };
 
         // Inicialização
@@ -836,6 +841,9 @@
                     <button class="btn" style="background: #f59e0b; color: white;" onclick="confirmDeliveryCode('${assignment.id}')">
                         🔢 Confirmar Código
                     </button>
+                    <button class="btn" style="background: #6b7280; color: white; margin-top: 0.5rem;" onclick="finishWithoutCode('${assignment.id}')">
+                        ✅ Finalizar Sem Código
+                    </button>
                 `;
             }
 
@@ -934,6 +942,35 @@
             }
         }
 
+        // Finalizar pedido sem código
+        async function finishWithoutCode(assignmentId) {
+            try {
+                console.log(`✅ Finalizando pedido sem código: ${assignmentId}`);
+                
+                if (!confirm('Tem certeza que deseja finalizar este pedido sem confirmar o código de entrega?')) {
+                    return;
+                }
+                
+                // Importar funções do Firebase
+                const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                
+                // Atualizar status no Firebase para concluded
+                const docRef = doc(window.firebaseDb, 'deliveryAssignments', assignmentId);
+                await updateDoc(docRef, {
+                    status: 'concluded',
+                    concludedAt: new Date().toISOString(),
+                    finishedWithoutCode: true,
+                    updatedAt: serverTimestamp()
+                });
+
+                console.log('✅ Pedido finalizado sem código');
+                showToast('✅ Pedido finalizado com sucesso!', 'success');
+                
+            } catch (error) {
+                console.error('❌ Erro ao finalizar pedido:', error);
+                showToast('Erro ao finalizar pedido', 'error');
+            }
+        }
         // Confirmar código de entrega
         async function confirmDeliveryCode(assignmentId) {
             const assignment = assignments.get(assignmentId);
@@ -1136,6 +1173,7 @@
         window.acceptOrder = acceptOrder;
         window.dispatchOrder = dispatchOrder;
         window.confirmDeliveryCode = confirmDeliveryCode;
+        window.finishWithoutCode = finishWithoutCode;
         window.openOrderModal = openOrderModal;
         window.closeModal = closeModal;
         window.logout = logout;
