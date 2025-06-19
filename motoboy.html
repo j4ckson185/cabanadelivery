@@ -1173,28 +1173,61 @@
             }).format(value);
         }
 
-        function getPaymentMethodLabel(payment) {
+function getPaymentMethodLabel(payment) {
             if (!payment) return 'N/A';
             
+            // Mapear métodos de pagamento baseado na estrutura da API do iFood
             const methodMap = {
                 'CASH': 'Dinheiro',
-                'CREDIT': 'Cartão de Crédito',
+                'CREDIT': 'Cartão de Crédito', 
                 'DEBIT': 'Cartão de Débito',
                 'PIX': 'PIX',
                 'MEAL_VOUCHER': 'Vale Refeição',
-                'FOOD_VOUCHER': 'Vale Alimentação',
+                'FOOD_VOUCHER': 'Vale Alimentação', 
                 'GIFT_CARD': 'Gift Card',
                 'DIGITAL_WALLET': 'Carteira Digital'
             };
             
-            let label = methodMap[payment.method] || payment.method || 'N/A';
+            // Tratar o campo method que pode conter múltiplos valores separados por /
+            let method = payment.method || '';
+            let label = 'N/A';
             
-            if (payment.card?.brand) {
+            // Se method contém múltiplos valores (ex: "CREDIT / DEBIT / MEAL_VOUCHER"), usar o primeiro
+            if (method.includes('/')) {
+                const methods = method.split('/').map(m => m.trim());
+                method = methods[0];
+            }
+            
+            // Remover espaços extras
+            method = method.trim();
+            
+            // Mapear o método
+            label = methodMap[method] || method || 'N/A';
+            
+            // Adicionar informações de cartão se disponível
+            if (payment.card?.brand && payment.card.brand !== 'PIX') {
                 label += ` (${payment.card.brand})`;
             }
             
+            // Adicionar informações de carteira digital
             if (payment.wallet?.name) {
-                label += ` (${payment.wallet.name})`;
+                const walletMap = {
+                    'APPLE_PAY': 'Apple Pay',
+                    'GOOGLE_PAY': 'Google Pay', 
+                    'SAMSUNG_PAY': 'Samsung Pay'
+                };
+                const walletName = walletMap[payment.wallet.name] || payment.wallet.name;
+                label += ` (${walletName})`;
+            }
+            
+            // Para dinheiro, mostrar troco se aplicável
+            if (method === 'CASH' && payment.cash?.changeFor) {
+                const changeFor = payment.cash.changeFor;
+                const value = payment.value || 0;
+                const change = changeFor - value;
+                if (change > 0) {
+                    label += ` - Troco: R$ ${change.toFixed(2).replace('.', ',')}`;
+                }
             }
             
             return label;
