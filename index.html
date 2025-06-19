@@ -360,6 +360,12 @@
             transform: none;
         }
 
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            border-radius: 8px;
+        }
+
         .toast {
             position: fixed;
             top: 2rem;
@@ -449,8 +455,13 @@
     <div class="header">
         <div class="header-content">
             <div class="logo">🏖️ Cabana Delivery</div>
-            <div id="connectionStatus" class="status-badge status-connecting">
-                <span class="loading"></span> Conectando...
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <button onclick="simulateNewOrder()" class="btn btn-primary btn-small">
+                    📱 Simular Pedido
+                </button>
+                <div id="connectionStatus" class="status-badge status-connecting">
+                    <span class="loading"></span> Conectando...
+                </div>
             </div>
         </div>
     </div>
@@ -546,92 +557,97 @@
         const modal = document.getElementById('orderModal');
         const toast = document.getElementById('toast');
 
-        // Função para fazer requisições via proxy Netlify - corrigida para endpoint
- async function apiRequest(endpoint, options = {}) {
-    const { method = 'GET', body, requiresAuth = true } = options;
-    
-    const headers = {};
-
-    if (requiresAuth && accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-
-    if (endpoint.includes('polling')) {
-        headers['x-polling-merchants'] = API_CONFIG.merchantUUID;
-    }
-
-    // Para endpoints que não são OAuth, adicionar Content-Type JSON
-    if (!endpoint.includes('authentication')) {
-        headers['Content-Type'] = 'application/json';
-    }
-
-    try {
-        console.log(`📤 Fazendo requisição: ${method} ${endpoint}`);
-        console.log('📋 Headers enviados:', headers);
-        console.log('📋 Body enviado:', body);
-        
-        const requestPayload = {
-            endpoint: endpoint,
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : null
-        };
-        
-        console.log('📦 Payload completo para proxy:', requestPayload);
-        
-        const response = await fetch('/.netlify/functions/ifood-proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestPayload)
-        });
-
-        console.log(`📨 Status da resposta: ${response.status} ${response.statusText}`);
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Resposta inválida' }));
-            console.error('❌ Erro na resposta do proxy:', errorData);
+        // Função para fazer requisições via proxy Netlify
+        async function apiRequest(endpoint, options = {}) {
+            const { method = 'GET', body, requiresAuth = true } = options;
             
-            let errorMessage = `HTTP ${response.status}`;
-            if (errorData.error) {
-                errorMessage += `: ${errorData.error}`;
-            }
-            if (errorData.details && errorData.details.message) {
-                errorMessage += ` - ${errorData.details.message}`;
-            }
-            
-            throw new Error(errorMessage);
-        }
+            const headers = {};
 
-        const responseText = await response.text();
-        let data = null;
-        if (responseText.trim()) {
+            if (requiresAuth && accessToken) {
+                headers['Authorization'] = `Bearer ${accessToken}`;
+            }
+
+            if (endpoint.includes('polling')) {
+                headers['x-polling-merchants'] = API_CONFIG.merchantUUID;
+            }
+
+            // Para endpoints que não são OAuth, adicionar Content-Type JSON
+            if (!endpoint.includes('authentication')) {
+                headers['Content-Type'] = 'application/json';
+            }
+
             try {
-                data = JSON.parse(responseText);
-            } catch (err) {
-                console.warn('⚠️ Falha ao parsear JSON da resposta:', err);
-                data = { raw: responseText };
+                console.log(`📤 Fazendo requisição: ${method} ${endpoint}`);
+                console.log('📋 Headers enviados:', headers);
+                console.log('📋 Body enviado:', body);
+                
+                const requestPayload = {
+                    endpoint: endpoint,
+                    method,
+                    headers,
+                    body: body ? JSON.stringify(body) : null
+                };
+                
+                console.log('📦 Payload completo para proxy:', requestPayload);
+                
+                const response = await fetch('/.netlify/functions/ifood-proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestPayload)
+                });
+
+                console.log(`📨 Status da resposta: ${response.status} ${response.statusText}`);
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Resposta inválida' }));
+                    console.error('❌ Erro na resposta do proxy:', errorData);
+                    
+                    // Construir mensagem de erro mais detalhada
+                    let errorMessage = `HTTP ${response.status}`;
+                    if (errorData.error) {
+                        errorMessage += `: ${errorData.error}`;
+                    }
+                    if (errorData.details && errorData.details.message) {
+                        errorMessage += ` - ${errorData.details.message}`;
+                    }
+                    
+                    throw new Error(errorMessage);
+                }
+
+                // Tratamento especial para resposta 204 (No Content)
+                if (response.status === 204) {
+                    console.log('📭 Resposta 204: Nenhum conteúdo (retornando null)');
+                    return null;
+                }
+
+                const responseText = await response.text();
+                
+                // Se não há conteúdo, retornar null
+                if (!responseText.trim()) {
+                    console.log('📭 Resposta vazia (retornando null)');
+                    return null;
+                }
+
+                const data = JSON.parse(responseText);
+                console.log(`✅ Resposta recebida para ${endpoint}:`, data);
+                
+                return data;
+            } catch (error) {
+                console.error('❌ Erro na requisição API:', error);
+                throw error;
             }
         }
 
-        console.log(`✅ Resposta recebida para ${endpoint}:`, data);
-        return data;
-    } catch (error) {
-        console.error('❌ Erro na requisição API:', error);
-        throw error;
-    }
-}
-
-        // Autenticação OAuth2 - logs detalhados
+        // Autenticação OAuth2
         async function authenticate() {
             try {
                 updateConnectionStatus('connecting', 'Autenticando...');
                 console.log('🔐 Iniciando autenticação com iFood...');
                 console.log('🔑 Credenciais:', {
                     clientId: API_CONFIG.clientId,
-                    clientSecret: API_CONFIG.clientSecret.substring(0, 10) + '...' // Mostrar só início
+                    clientSecret: API_CONFIG.clientSecret.substring(0, 10) + '...'
                 });
                 
-                // Formato correto para o proxy
                 const formData = new URLSearchParams();
                 formData.append('grantType', 'client_credentials');
                 formData.append('clientId', API_CONFIG.clientId);
@@ -659,7 +675,6 @@
 
                 console.log(`📨 Status da resposta: ${response.status} ${response.statusText}`);
 
-                // Log da resposta independente do status
                 const responseText = await response.text();
                 console.log('📄 Resposta completa (raw):', responseText);
 
@@ -698,7 +713,6 @@
                 
                 showToast('Erro ao conectar: ' + error.message, 'error');
                 
-                // Tentar novamente em 15 segundos
                 console.log('⏰ Tentando reautenticar em 15 segundos...');
                 setTimeout(() => {
                     authenticate();
@@ -719,30 +733,41 @@
             console.log('Iniciando polling a cada 30 segundos...');
 
             const poll = async () => {
+                const startTime = new Date();
                 try {
-                    console.log('Fazendo polling para novos eventos...');
+                    console.log(`🔄 [${startTime.toLocaleTimeString()}] Fazendo polling para novos eventos...`);
                     const events = await apiRequest('/events/v1.0/events:polling');
                     
-                    console.log(`Polling retornou ${events?.length || 0} eventos`);
-                    
-                    if (events && events.length > 0) {
-                        console.log('Eventos recebidos:', events);
+                    // Tratar resposta 204 (nenhum evento novo) - é normal
+                    if (events === null || events === undefined) {
+                        console.log('📭 Nenhum evento novo recebido (204 No Content)');
+                        updateConnectionStatus('connected', 'Conectado - Aguardando pedidos');
+                    } else if (Array.isArray(events) && events.length > 0) {
+                        console.log(`📨 Polling retornou ${events.length} eventos:`, events);
+                        // Processar eventos (que agora inclui o acknowledgment)
                         await processEvents(events);
-                        await acknowledgeEvents(events.map(e => e.id));
+                        updateConnectionStatus('connected', `Conectado - ${events.length} evento(s) processado(s)`);
+                    } else if (Array.isArray(events) && events.length === 0) {
+                        console.log('📭 Array vazio de eventos recebido');
+                        updateConnectionStatus('connected', 'Conectado - Nenhum evento');
+                    } else {
+                        console.log('📦 Resposta inesperada do polling:', events);
+                        updateConnectionStatus('connected', 'Conectado');
                     }
+                    
                 } catch (error) {
-                    console.error('Erro no polling:', error);
+                    console.error(`❌ [${startTime.toLocaleTimeString()}] Erro no polling:`, error);
                     
                     if (error.message.includes('401') || error.message.includes('403')) {
-                        console.log('Token expirado, tentando renovar...');
+                        console.log('🔑 Token expirado, tentando renovar...');
                         isPolling = false;
                         await authenticate();
                         return;
                     } else if (error.message.includes('500') || error.message.includes('502') || error.message.includes('503')) {
-                        console.log('Erro do servidor iFood, tentando novamente em 60 segundos...');
+                        console.log('🏥 Erro do servidor iFood, tentando novamente em 60 segundos...');
                         updateConnectionStatus('error', 'Servidor iFood indisponível');
                         if (isPolling) {
-                            pollingTimer = setTimeout(poll, 60000); // Aguardar 1 minuto em caso de erro do servidor
+                            pollingTimer = setTimeout(poll, 60000);
                         }
                         return;
                     }
@@ -751,8 +776,8 @@
                     showToast('Erro ao buscar eventos: ' + error.message, 'error');
                 }
 
+                // Continuar polling normalmente
                 if (isPolling) {
-                    updateConnectionStatus('connected', 'Conectado');
                     pollingTimer = setTimeout(poll, API_CONFIG.pollingInterval);
                 }
             };
@@ -776,7 +801,7 @@
                         if (orderDetails) {
                             orders.set(event.orderId, orderDetails);
                             console.log(`Detalhes do pedido ${event.orderId} carregados:`, orderDetails);
-                            showToast(`Novo pedido recebido: #${orderDetails.displayId}`, 'success');
+                            showToast(`🎉 NOVO PEDIDO REAL: #${orderDetails.displayId} - ${orderDetails.customer?.name || 'Cliente'}`, 'success');
                         } else {
                             console.error(`Falha ao carregar detalhes do pedido ${event.orderId}`);
                         }
@@ -809,6 +834,13 @@
             console.log(`Total de pedidos no cache: ${orders.size}`);
             applyFilters();
             renderOrders();
+            
+            // Tentar confirmar todos os eventos, mas não falhar se der erro
+            if (events.length > 0) {
+                const eventIds = events.map(e => e.id);
+                console.log('📝 Tentando confirmar eventos processados:', eventIds);
+                await acknowledgeEvents(eventIds);
+            }
         }
 
         // Buscar detalhes do pedido
@@ -822,7 +854,7 @@
             }
         }
 
-// Confirmar eventos
+        // Confirmar eventos
         async function acknowledgeEvents(eventIds) {
             if (!eventIds || eventIds.length === 0) {
                 console.log('📝 Nenhum evento para confirmar');
@@ -831,55 +863,30 @@
             
             try {
                 console.log('🔔 Confirmando eventos:', eventIds);
+                console.log('📋 Total de eventos para confirmar:', eventIds.length);
                 
-                // Primeira tentativa: URL com dois pontos (mais comum na docs)
-                await apiRequest('/events/v1.0/events/acknowledgment', {
+                // Formato correto conforme documentação do iFood: array de objetos com id
+                const eventObjects = eventIds.map(id => ({ id }));
+                console.log('📋 Formato de acknowledgment (primeiros 3):', eventObjects.slice(0, 3));
+                
+                // Endpoint correto: /events/v1.0/events/acknowledgment
+                const result = await apiRequest('/events/v1.0/events/acknowledgment', {
                     method: 'POST',
-                    body: { eventIds }
+                    body: eventObjects  // Array de {id: "..."} conforme a documentação
                 });
                 
-                console.log('✅ Eventos confirmados com sucesso (URL com :)');
+                console.log('✅ Eventos confirmados com sucesso. Resultado:', result);
                 return;
                 
             } catch (error) {
-                console.error('❌ Erro ao confirmar eventos (URL com :):', error);
+                console.error('❌ Erro ao confirmar eventos:', error);
+                console.error('🔍 Detalhes do erro:', {
+                    message: error.message,
+                    eventIds: eventIds,
+                    formatted: eventIds.map(id => ({ id }))
+                });
                 
-                try {
-                    // Segunda tentativa: URL com barra
-                    console.log('🔄 Tentando URL alternativa com barra...');
-                    await apiRequest('/events/v1.0/events/acknowledgment', {
-                        method: 'POST',
-                        body: { eventIds }
-                    });
-                    console.log('✅ Eventos confirmados com URL alternativa (barra)');
-                    return;
-                    
-                } catch (error2) {
-                    console.error('❌ Erro ao confirmar eventos (URL com barra):', error2);
-                    
-                    try {
-                        // Terceira tentativa: endpoint mais simples
-                        console.log('🔄 Tentando endpoint mais simples...');
-                        await apiRequest('/events/acknowledgment', {
-                            method: 'POST',
-                            body: { eventIds }
-                        });
-                        console.log('✅ Eventos confirmados com endpoint simples');
-                        return;
-                        
-                    } catch (error3) {
-                        console.error('❌ Erro ao confirmar eventos (endpoint simples):', error3);
-                        
-                        // Log detalhado dos erros
-                        console.error('🔍 Resumo dos erros de acknowledgment:', {
-                            tentativa1: error.message,
-                            tentativa2: error2.message,
-                            tentativa3: error3.message
-                        });
-                        
-                        showToast('Aviso: Problemas ao confirmar eventos. Verificar logs.', 'error');
-                    }
-                }
+                showToast('Aviso: Problemas ao confirmar eventos. Verificar logs.', 'error');
             }
         }
 
@@ -1286,7 +1293,146 @@
             return new Intl.NumberFormat('pt-BR', {
                 style: 'currency',
                 currency: 'BRL'
-            }).format(value / 100); // iFood API retorna valores em centavos
+            }).format(value / 100);
+        }
+
+        // Função para simular um novo pedido (para testes)
+        function simulateNewOrder() {
+            const orderNumber = String(orders.size + 1).padStart(3, '0');
+            const customerNames = ['Carlos Silva', 'Ana Costa', 'Pedro Santos', 'Julia Oliveira', 'Roberto Lima'];
+            const items = [
+                { name: 'Hambúrguer Artesanal', price: 2800 },
+                { name: 'Pizza Calabresa', price: 3200 },
+                { name: 'Sanduíche Natural', price: 1500 },
+                { name: 'Açaí 500ml', price: 1200 },
+                { name: 'Combo Executivo', price: 2500 }
+            ];
+            
+            const randomCustomer = customerNames[Math.floor(Math.random() * customerNames.length)];
+            const randomItem = items[Math.floor(Math.random() * items.length)];
+            const deliveryFee = Math.floor(Math.random() * 800) + 200;
+            
+            const newOrder = {
+                id: `test-${Date.now()}`,
+                displayId: orderNumber,
+                orderStatus: 'PLACED',
+                orderType: 'DELIVERY',
+                createdAt: new Date().toISOString(),
+                customer: {
+                    name: randomCustomer,
+                    phone: `(84) 9${Math.floor(Math.random() * 9)}${Math.floor(Math.random() * 9)}${Math.floor(Math.random() * 9)}${Math.floor(Math.random() * 9)}-${Math.floor(Math.random() * 9)}${Math.floor(Math.random() * 9)}${Math.floor(Math.random() * 9)}${Math.floor(Math.random() * 9)}`
+                },
+                totalPrice: randomItem.price + deliveryFee,
+                subTotal: randomItem.price,
+                deliveryFee: deliveryFee,
+                payments: [{
+                    type: ['PIX', 'CREDIT', 'DEBIT', 'CASH'][Math.floor(Math.random() * 4)],
+                    value: randomItem.price + deliveryFee
+                }],
+                items: [{
+                    name: randomItem.name,
+                    quantity: 1,
+                    unitPrice: randomItem.price,
+                    totalPrice: randomItem.price,
+                    observations: Math.random() > 0.5 ? 'Sem cebola' : ''
+                }],
+                deliveryAddress: {
+                    streetName: ['Av. das Dunas', 'Rua das Flores', 'Av. Praia de Pipa', 'Rua do Sol'][Math.floor(Math.random() * 4)],
+                    streetNumber: String(Math.floor(Math.random() * 999) + 1),
+                    neighborhood: ['Ponta Negra', 'Lagoa Nova', 'Capim Macio', 'Candelária'][Math.floor(Math.random() * 4)],
+                    city: 'Natal',
+                    postalCode: '59090-000'
+                }
+            };
+
+            orders.set(newOrder.id, newOrder);
+            console.log('🆕 Novo pedido simulado:', newOrder);
+            
+            applyFilters();
+            renderOrders();
+            
+            showToast(`📱 Pedido simulado: #${newOrder.displayId} - ${newOrder.customer.name}`, 'success');
+        }
+
+        // Função para criar pedidos de teste
+        function createTestOrders() {
+            const testOrders = [
+                {
+                    id: 'test-001',
+                    displayId: '001',
+                    orderStatus: 'PLACED',
+                    orderType: 'DELIVERY',
+                    createdAt: new Date().toISOString(),
+                    customer: {
+                        name: 'João Silva',
+                        phone: '(84) 99999-1234'
+                    },
+                    totalPrice: 3500,
+                    subTotal: 3000,
+                    deliveryFee: 500,
+                    payments: [{
+                        type: 'PIX',
+                        value: 3500
+                    }],
+                    items: [{
+                        name: 'Hambúrguer Especial',
+                        quantity: 1,
+                        unitPrice: 2500,
+                        totalPrice: 2500
+                    }, {
+                        name: 'Batata Frita',
+                        quantity: 1,
+                        unitPrice: 500,
+                        totalPrice: 500
+                    }],
+                    deliveryAddress: {
+                        streetName: 'Av. das Dunas',
+                        streetNumber: '123',
+                        neighborhood: 'Ponta Negra',
+                        city: 'Natal',
+                        postalCode: '59090-000'
+                    }
+                },
+                {
+                    id: 'test-002',
+                    displayId: '002',
+                    orderStatus: 'CONFIRMED',
+                    orderType: 'DELIVERY',
+                    createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+                    customer: {
+                        name: 'Maria Santos',
+                        phone: '(84) 99999-5678'
+                    },
+                    totalPrice: 2800,
+                    subTotal: 2500,
+                    deliveryFee: 300,
+                    payments: [{
+                        type: 'CREDIT',
+                        value: 2800
+                    }],
+                    items: [{
+                        name: 'Pizza Margherita',
+                        quantity: 1,
+                        unitPrice: 2500,
+                        totalPrice: 2500
+                    }],
+                    deliveryAddress: {
+                        streetName: 'Rua das Flores',
+                        streetNumber: '456',
+                        neighborhood: 'Lagoa Nova',
+                        city: 'Natal',
+                        postalCode: '59075-000'
+                    }
+                }
+            ];
+
+            testOrders.forEach(order => {
+                orders.set(order.id, order);
+            });
+
+            console.log(`🧪 ${testOrders.length} pedidos de teste criados`);
+            applyFilters();
+            renderOrders();
         }
 
         // Event listeners
@@ -1310,6 +1456,7 @@
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
             console.log('🏖️ Cabana Delivery iniciando...');
+            console.log('📋 Sistema integrado com iFood API v1.0');
             console.log('⚙️ Configuração da API:', {
                 merchantId: API_CONFIG.merchantId,
                 merchantUUID: API_CONFIG.merchantUUID,
@@ -1321,7 +1468,14 @@
             applyFilters();
             renderOrders();
             
-            // Iniciar autenticação diretamente (a função existe pelos logs)
+            // Criar alguns pedidos de teste para demonstração (apenas se não há pedidos reais)
+            if (orders.size === 0) {
+                console.log('🧪 Criando pedidos de teste para demonstração...');
+                console.log('💡 Use o botão "Simular Pedido" para adicionar mais pedidos de teste');
+                createTestOrders();
+            }
+            
+            // Iniciar autenticação diretamente
             console.log('🔐 Iniciando autenticação diretamente...');
             setTimeout(() => {
                 authenticate();
