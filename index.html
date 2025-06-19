@@ -348,6 +348,49 @@
             letter-spacing: 0.5px;
         }
 
+        .card-actions {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex: 1;
+            min-width: 80px;
+        }
+
+        .btn-small:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-small.btn-confirm {
+            background: #059669;
+            color: white;
+        }
+
+        .btn-small.btn-dispatch {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-small.btn-cancel {
+            background: #ef4444;
+            color: white;
+        }
+
         .total-value {
             font-size: 1.5rem;
             font-weight: 700;
@@ -1011,6 +1054,11 @@
                 try {
                     console.log(`Processando evento: ${event.code} para pedido ${event.orderId}`);
                     
+                    // Log adicional para DDCR 
+                    if (event.code === 'DDCR') {
+                        console.log(`📋 DDCR - Na prática é um pedido confirmado (não despachado como deveria ser)`);
+                    }
+                    
                     if (event.code === 'PLC' || event.code === 'PLACED') {
                         const orderDetails = await getOrderDetails(event.orderId);
                         if (orderDetails) {
@@ -1026,7 +1074,8 @@
                             // Mapear códigos de evento para status
                             const statusMap = {
                                 'CFM': 'CONFIRMED',
-                                'DSP': 'DISPATCHED', 
+                                'DSP': 'DISPATCHED',
+                                'DDCR': 'DDCR', // Na prática é pedido confirmado, não despachado 
                                 'CON': 'CONCLUDED',
                                 'CAN': 'CANCELLED'
                             };
@@ -1040,7 +1089,8 @@
                             if (orderDetails) {
                                 const statusMap = {
                                     'CFM': 'CONFIRMED',
-                                    'DSP': 'DISPATCHED', 
+                                    'DSP': 'DISPATCHED',
+                                    'DDCR': 'DDCR', // Na prática é pedido confirmado, não despachado
                                     'CON': 'CONCLUDED',
                                     'CAN': 'CANCELLED'
                                 };
@@ -1223,6 +1273,7 @@
                 'CONFIRMED': 'placed',
                 'PLC': 'placed',
                 'CFM': 'placed',
+                'DDCR': 'placed', // Na prática é pedido confirmado, não despachado
                 'DISPATCHED': 'dispatched',
                 'DSP': 'dispatched',
                 'CONCLUDED': 'concluded',
@@ -1239,6 +1290,7 @@
                 'PLC': 'Novo Pedido', 
                 'CONFIRMED': 'Confirmado',
                 'CFM': 'Confirmado',
+                'DDCR': 'Confirmado', // Na prática é apenas confirmado
                 'DISPATCHED': 'Despachado',
                 'DSP': 'Despachado',
                 'CONCLUDED': 'Concluído',
@@ -1255,6 +1307,7 @@
                 'PLC': 'status-placed',
                 'CONFIRMED': 'status-confirmed', 
                 'CFM': 'status-confirmed',
+                'DDCR': 'status-confirmed', // Na prática é confirmado
                 'DISPATCHED': 'status-dispatched',
                 'DSP': 'status-dispatched',
                 'CONCLUDED': 'status-concluded',
@@ -1707,6 +1760,67 @@
             return html;
         }
 
+        // Gerar botões de ação para os cards (versão compacta)
+        function generateCardActionButtons(order) {
+            const status = order.orderStatus || 'PLACED';
+            let buttons = '';
+
+            switch (status) {
+                case 'PLACED':
+                case 'PLC':
+                    buttons = `
+                        <button class="btn-small btn-confirm" onclick="confirmOrder('${order.id}')">
+                            ✅ Confirmar
+                        </button>
+                        <button class="btn-small btn-cancel" onclick="cancelOrder('${order.id}')">
+                            ❌ Cancelar
+                        </button>
+                    `;
+                    break;
+                case 'CONFIRMED':
+                case 'CFM':
+                case 'DDCR': // Na prática é pedido confirmado
+                    buttons = `
+                        <button class="btn-small btn-dispatch" onclick="dispatchOrder('${order.id}')">
+                            🚀 Despachar
+                        </button>
+                        <button class="btn-small btn-cancel" onclick="cancelOrder('${order.id}')">
+                            ❌ Cancelar
+                        </button>
+                    `;
+                    break;
+                case 'DISPATCHED':
+                case 'DSP':
+                    buttons = `
+                        <button class="btn-small btn-cancel" onclick="cancelOrder('${order.id}')">
+                            ❌ Cancelar
+                        </button>
+                    `;
+                    break;
+                case 'CONCLUDED':
+                case 'CON':
+                case 'CANCELLED': 
+                case 'CAN':
+                    // Nenhum botão para pedidos concluídos ou cancelados
+                    buttons = '';
+                    break;
+                default:
+                    // Para status não reconhecidos, mostrar apenas confirmar
+                    buttons = `
+                        <button class="btn-small btn-confirm" onclick="confirmOrder('${order.id}')">
+                            ✅ Confirmar
+                        </button>
+                        <button class="btn-small btn-cancel" onclick="cancelOrder('${order.id}')">
+                            ❌ Cancelar
+                        </button>
+                    `;
+                    break;
+            }
+
+            return buttons;
+        }
+
+        // Gerar botões de ação para o modal (versão completa)
         function generateActionButtons(order) {
             const status = order.orderStatus || 'PLACED';
             let buttons = '';
@@ -1729,6 +1843,7 @@
                     break;
                 case 'CONFIRMED':
                 case 'CFM':
+                case 'DDCR': // Na prática é pedido confirmado
                     buttons = `
                         <div class="action-buttons">
                             <button class="btn btn-dispatch" onclick="dispatchOrder('${order.id}')">
