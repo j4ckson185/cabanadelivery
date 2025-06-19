@@ -352,9 +352,14 @@
             margin-top: 1rem;
             padding-top: 1rem;
             border-top: 1px solid #e2e8f0;
-            display: flex;
+            display: flex !important;
             gap: 0.5rem;
             flex-wrap: wrap;
+            min-height: 40px;
+            background: rgba(255, 0, 0, 0.1) !important; /* DEBUG: Fundo vermelho temporário */
+            border: 2px solid red !important; /* DEBUG: Borda vermelha temporária */
+            border-radius: 8px;
+            padding: 1rem;
         }
 
         .btn-small {
@@ -369,6 +374,8 @@
             transition: all 0.2s ease;
             flex: 1;
             min-width: 80px;
+            display: inline-block !important;
+            text-align: center;
         }
 
         .btn-small:hover {
@@ -399,6 +406,8 @@
             color: #6b7280;
             font-size: 0.875rem;
             font-weight: 500;
+            display: block !important;
+            width: 100%;
         }
 
         .no-actions {
@@ -1480,6 +1489,9 @@
                     </div>
                 </div>
             `;
+            
+            console.log(`🔧 DEBUG createOrderCard: HTML final (primeiro 200 chars):`, cardHTML.substring(0, 200) + '...');
+            return cardHTML;
         }
 
         function openOrderModal(orderId) {
@@ -1786,67 +1798,61 @@
         // Gerar botões de ação para os cards (versão compacta)
         function generateCardActionButtons(order) {
             const status = order.orderStatus || 'PLACED';
+            
+            console.log(`🔧 DEBUG: Gerando botões para card do pedido #${order.displayId} - Status: ${status}`);
+
+            // SEMPRE retornar algum botão para debug
             let buttons = '';
 
-            console.log(`🔧 Gerando botões do CARD para pedido ${order.displayId} com status: ${status}`);
-
-            switch (status) {
-                case 'PLACED':
-                case 'PLC':
-                    buttons = `
-                        <button class="btn-small btn-confirm" onclick="confirmOrder('${order.id}')">
-                            ✅ Confirmar
-                        </button>
-                        <button class="btn-small btn-cancel" onclick="cancelOrder('${order.id}')">
-                            ❌ Cancelar
-                        </button>
-                    `;
-                    break;
-                case 'CONFIRMED':
-                case 'CFM':
-                case 'DDCR': // Na prática é pedido confirmado
-                    buttons = `
-                        <button class="btn-small btn-dispatch" onclick="dispatchOrder('${order.id}')">
-                            🚀 Despachar
-                        </button>
-                        <button class="btn-small btn-cancel" onclick="cancelOrder('${order.id}')">
-                            ❌ Cancelar
-                        </button>
-                    `;
-                    break;
-                case 'DISPATCHED':
-                case 'DSP':
-                    buttons = `
-                        <button class="btn-small btn-cancel" onclick="cancelOrder('${order.id}')">
-                            ❌ Cancelar
-                        </button>
-                    `;
-                    break;
-                case 'CONCLUDED':
-                case 'CON':
-                case 'CANCELLED': 
-                case 'CAN':
-                    // Para pedidos finalizados, mostrar status apenas
-                    buttons = `
-                        <div class="status-final">
-                            <span class="status-text">Pedido ${status === 'CONCLUDED' || status === 'CON' ? 'Concluído' : 'Cancelado'}</span>
-                        </div>
-                    `;
-                    break;
-                default:
-                    // Para status não reconhecidos, mostrar apenas confirmar
-                    buttons = `
-                        <button class="btn-small btn-confirm" onclick="confirmOrder('${order.id}')">
-                            ✅ Confirmar
-                        </button>
-                        <button class="btn-small btn-cancel" onclick="cancelOrder('${order.id}')">
-                            ❌ Cancelar
-                        </button>
-                    `;
-                    break;
+            if (status === 'PLACED' || status === 'PLC') {
+                buttons = `
+                    <button class="btn-small btn-confirm" onclick="event.stopPropagation(); confirmOrder('${order.id}')">
+                        ✅ Confirmar
+                    </button>
+                    <button class="btn-small btn-cancel" onclick="event.stopPropagation(); cancelOrder('${order.id}')">
+                        ❌ Cancelar
+                    </button>
+                `;
+            } else if (status === 'CONFIRMED' || status === 'CFM' || status === 'DDCR') {
+                buttons = `
+                    <button class="btn-small btn-dispatch" onclick="event.stopPropagation(); dispatchOrder('${order.id}')">
+                        🚀 Despachar
+                    </button>
+                    <button class="btn-small btn-cancel" onclick="event.stopPropagation(); cancelOrder('${order.id}')">
+                        ❌ Cancelar
+                    </button>
+                `;
+            } else if (status === 'DISPATCHED' || status === 'DSP') {
+                buttons = `
+                    <button class="btn-small btn-cancel" onclick="event.stopPropagation(); cancelOrder('${order.id}')">
+                        ❌ Cancelar
+                    </button>
+                `;
+            } else if (status === 'CONCLUDED' || status === 'CON') {
+                buttons = `
+                    <div class="status-final">
+                        ✅ Pedido Concluído
+                    </div>
+                `;
+            } else if (status === 'CANCELLED' || status === 'CAN') {
+                buttons = `
+                    <div class="status-final">
+                        ❌ Pedido Cancelado
+                    </div>
+                `;
+            } else {
+                // Fallback para qualquer status
+                buttons = `
+                    <button class="btn-small btn-confirm" onclick="event.stopPropagation(); confirmOrder('${order.id}')">
+                        ✅ Confirmar
+                    </button>
+                    <button class="btn-small btn-cancel" onclick="event.stopPropagation(); cancelOrder('${order.id}')">
+                        ❌ Cancelar
+                    </button>
+                `;
             }
 
-            console.log(`🔧 Botões do CARD gerados:`, buttons.replace(/\s+/g, ' ').substring(0, 100) + '...');
+            console.log(`🔧 DEBUG: Botões gerados (length: ${buttons.length}):`, buttons.substring(0, 100) + '...');
             return buttons;
         }
 
