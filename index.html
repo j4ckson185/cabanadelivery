@@ -604,7 +604,8 @@
                     throw new Error(errorMessage);
                 }
 
-                const data = await response.json();
+                const responseText = await response.text();
+                const data = responseText ? JSON.parse(responseText) : null;
                 console.log(`✅ Resposta recebida para ${endpoint}:`, data);
                 
                 return data;
