@@ -604,8 +604,16 @@
                     throw new Error(errorMessage);
                 }
 
-                const responseText = await response.text();
-                const data = responseText ? JSON.parse(responseText) : null;
+const responseText = await response.text();
+let data = null;
+if (responseText.trim()) {
+    try {
+        data = JSON.parse(responseText);
+    } catch (err) {
+        console.warn('⚠️ Falha ao parsear JSON da resposta:', err);
+        data = { raw: responseText };
+    }
+}
                 console.log(`✅ Resposta recebida para ${endpoint}:`, data);
                 
                 return data;
