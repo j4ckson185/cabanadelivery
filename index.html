@@ -774,6 +774,12 @@
             margin-top: 0.25rem;
         }
 
+        .delivery-status {
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.25rem;
+        }
+
         .detail-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -1160,27 +1166,23 @@
                 </div>
                 <div class="delivery-option" onclick="assignToDelivery('boaz', 'Boaz')">
                     <div class="delivery-name">🏍️ Boaz</div>
-                    <div class="delivery-email">boaz@entregador.com</div>
+                    <div class="delivery-email">boazd3@gmail.com</div>
                 </div>
                 <div class="delivery-option" onclick="assignToDelivery('gabriel', 'Gabriel Andrade')">
                     <div class="delivery-name">🏍️ Gabriel Andrade</div>
-                    <div class="delivery-email">gabriel@entregador.com</div>
-                </div>
-                <div class="delivery-option" onclick="assignToDelivery('rafael', 'Rafael Judson')">
-                    <div class="delivery-name">🏍️ Rafael Judson</div>
-                    <div class="delivery-email">rafael@entregador.com</div>
+                    <div class="delivery-email">andrade88210@gmail.com</div>
                 </div>
                 <div class="delivery-option" onclick="assignToDelivery('matheus', 'Matheus Moura')">
                     <div class="delivery-name">🏍️ Matheus Moura</div>
-                    <div class="delivery-email">matheus@entregador.com</div>
+                    <div class="delivery-email">matheusmoura175@gmail.com</div>
                 </div>
                 <div class="delivery-option" onclick="assignToDelivery('narlison', 'Narlison')">
                     <div class="delivery-name">🏍️ Narlison</div>
-                    <div class="delivery-email">narlison@entregador.com</div>
+                    <div class="delivery-email">narlisonmedeiros04@gmail.com</div>
                 </div>
-                <div class="delivery-option" onclick="assignToDelivery('ivan', 'Ivan')">
-                    <div class="delivery-name">🏍️ Ivan</div>
-                    <div class="delivery-email">ivan@entregador.com</div>
+                <div class="delivery-option" onclick="assignToDelivery('rafael', 'Rafael Judson')">
+                    <div class="delivery-name">🏍️ Rafael Judson</div>
+                    <div class="delivery-email">rafaeljudson.profissional@gmail.com</div>
                 </div>
             </div>
         </div>
@@ -1459,9 +1461,12 @@
                 try {
                     console.log(`Processando evento: ${event.code} para pedido ${event.orderId}`);
                     
-                    // Log adicional para DDCR 
+                    // Log adicional para DDCR e DDCS
                     if (event.code === 'DDCR') {
                         console.log(`📋 DDCR - Na prática é um pedido confirmado (não despachado como deveria ser)`);
+                    }
+                    if (event.code === 'DDCS') {
+                        console.log(`📋 DDCS - Também é um pedido confirmado (não despachado como deveria ser)`);
                     }
                     
                     // Log para eventos de cancelamento
@@ -1486,6 +1491,7 @@
                                 'CFM': 'CONFIRMED',
                                 'DSP': 'DISPATCHED',
                                 'DDCR': 'DDCR', // Na prática é pedido confirmado, não despachado 
+                                'DDCS': 'DDCS', // Também é pedido confirmado, não despachado
                                 'CON': 'CONCLUDED',
                                 'CAN': 'CANCELLED',
                                 'CARF': oldStatus // Manter status atual se cancelamento falhou
@@ -1515,6 +1521,7 @@
                                     'CFM': 'CONFIRMED',
                                     'DSP': 'DISPATCHED',
                                     'DDCR': 'DDCR', // Na prática é pedido confirmado, não despachado
+                                    'DDCS': 'DDCS', // Também é pedido confirmado, não despachado
                                     'CON': 'CONCLUDED',
                                     'CAN': 'CANCELLED'
                                 };
@@ -1883,6 +1890,7 @@
                 'PLC': 'placed',
                 'CFM': 'placed',
                 'DDCR': 'placed', // Na prática é pedido confirmado, não despachado
+                'DDCS': 'placed', // Também é pedido confirmado
                 'DISPATCHED': 'dispatched',
                 'DSP': 'dispatched',
                 'CONCLUDED': 'concluded',
@@ -1901,6 +1909,7 @@
                 'CONFIRMED': 'Confirmado',
                 'CFM': 'Confirmado',
                 'DDCR': 'Confirmado', // Na prática é apenas confirmado
+                'DDCS': 'Confirmado', // Também é confirmado
                 'DISPATCHED': 'Despachado',
                 'DSP': 'Despachado',
                 'CONCLUDED': 'Concluído',
@@ -1919,6 +1928,7 @@
                 'CONFIRMED': 'status-confirmed', 
                 'CFM': 'status-confirmed',
                 'DDCR': 'status-confirmed', // Na prática é confirmado
+                'DDCS': 'status-confirmed', // Também é confirmado
                 'DISPATCHED': 'status-dispatched',
                 'DSP': 'status-dispatched',
                 'CONCLUDED': 'status-concluded',
@@ -2429,8 +2439,8 @@
                         ❌ Cancelar
                     </button>
                 `;
-            } else if (status === 'CONFIRMED' || status === 'CFM' || status === 'DDCR' || status === 'CARF') {
-                console.log(`🚨 Caso CONFIRMED/CFM/DDCR/CARF`);
+            } else if (status === 'CONFIRMED' || status === 'CFM' || status === 'DDCR' || status === 'DDCS' || status === 'CARF') {
+                console.log(`🚨 Caso CONFIRMED/CFM/DDCR/DDCS/CARF`);
                 buttons = `
                     <button class="btn-small btn-dispatch" onclick="event.stopPropagation(); dispatchOrder('${order.id}')">
                         🚀 Despachar
@@ -2502,6 +2512,7 @@
                 case 'CONFIRMED':
                 case 'CFM':
                 case 'DDCR': // Na prática é pedido confirmado
+                case 'DDCS': // Também é pedido confirmado
                 case 'CARF': // Erro de cancelamento - pedido continua ativo
                     buttons = `
                         <div class="action-buttons">
@@ -2757,7 +2768,7 @@
             }
             
             const status = order.orderStatus || 'PLACED';
-            if (['CONFIRMED', 'CFM', 'DDCR'].includes(status)) return 'status-confirmed';
+            if (['CONFIRMED', 'CFM', 'DDCR', 'DDCS'].includes(status)) return 'status-confirmed';
             if (['DISPATCHED', 'DSP'].includes(status)) return 'status-dispatched';
             if (['CONCLUDED', 'CON'].includes(status)) return 'status-concluded';
             return 'status-placed';
@@ -2832,6 +2843,12 @@
             
             const marker = L.marker([lat, lng], { icon: markerIcon })
                 .bindPopup(popupContent)
+                .on('click', () => {
+                    // Selecionar pedido na lista lateral automaticamente
+                    if (!selectedOrders.has(order.id)) {
+                        toggleOrderSelection(order.id);
+                    }
+                })
                 .addTo(deliveryMap);
             
             mapMarkers.set(order.id, marker);
@@ -2847,7 +2864,7 @@
             }
             
             const status = order.orderStatus || 'PLACED';
-            if (['CONFIRMED', 'CFM', 'DDCR'].includes(status)) return '#8b5cf6'; // Roxo - confirmado
+            if (['CONFIRMED', 'CFM', 'DDCR', 'DDCS'].includes(status)) return '#8b5cf6'; // Roxo - confirmado
             if (['DISPATCHED', 'DSP'].includes(status)) return '#06b6d4'; // Azul piscina - despachado via API
             if (['CONCLUDED', 'CON'].includes(status)) return '#22c55e'; // Verde - concluído via API
             return '#f59e0b'; // Amarelo escuro - placed
@@ -2892,6 +2909,17 @@
             }
         }
         
+        // Verificar se entregador está ocupado
+        function isDeliveryBusy(deliveryId) {
+            for (const assignment of deliveryAssignments.values()) {
+                if (assignment.deliveryId === deliveryId && 
+                    (assignment.status === 'sent' || assignment.status === 'accepted' || assignment.status === 'dispatched')) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         // Abrir modal de seleção de entregador
         function openDeliverySelectionModal() {
             if (selectedOrders.size === 0) {
@@ -2900,7 +2928,45 @@
             }
             
             document.getElementById('selectedOrdersCount').textContent = selectedOrders.size;
+            
+            // Atualizar status dos entregadores
+            updateDeliveryStatuses();
+            
             document.getElementById('deliverySelectionModal').style.display = 'block';
+        }
+        
+        // Atualizar status dos entregadores no modal
+        function updateDeliveryStatuses() {
+            const deliveryOptions = document.querySelectorAll('.delivery-option');
+            deliveryOptions.forEach(option => {
+                const deliveryId = option.getAttribute('onclick').match(/'([^']+)'/)[1];
+                const isBusy = isDeliveryBusy(deliveryId);
+                
+                // Remover status anterior
+                const existingStatus = option.querySelector('.delivery-status');
+                if (existingStatus) {
+                    existingStatus.remove();
+                }
+                
+                // Adicionar novo status
+                const statusDiv = document.createElement('div');
+                statusDiv.className = 'delivery-status';
+                statusDiv.style.fontSize = '0.75rem';
+                statusDiv.style.fontWeight = '600';
+                statusDiv.style.marginTop = '0.25rem';
+                
+                if (isBusy) {
+                    statusDiv.textContent = '🔴 OCUPADO';
+                    statusDiv.style.color = '#dc2626';
+                    option.style.opacity = '0.6';
+                } else {
+                    statusDiv.textContent = '🟢 DISPONÍVEL';
+                    statusDiv.style.color = '#059669';
+                    option.style.opacity = '1';
+                }
+                
+                option.appendChild(statusDiv);
+            });
         }
         
         // Fechar modal de seleção de entregador
@@ -2937,6 +3003,9 @@
                 
                 // Recarregar mapa
                 loadMapOrders();
+                
+                // Atualizar status dos entregadores
+                updateDeliveryStatuses();
                 
                 showToast(`✅ ${orderIds.length} pedido(s) enviado(s) para ${deliveryName}`, 'success');
                 
