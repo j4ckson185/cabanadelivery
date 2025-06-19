@@ -547,81 +547,79 @@
         const toast = document.getElementById('toast');
 
         // Função para fazer requisições via proxy Netlify - corrigida para endpoint
-        async function apiRequest(endpoint, options = {}) {
-            const { method = 'GET', body, requiresAuth = true } = options;
-            
-            const headers = {};
+ async function apiRequest(endpoint, options = {}) {
+    const { method = 'GET', body, requiresAuth = true } = options;
+    
+    const headers = {};
 
-            if (requiresAuth && accessToken) {
-                headers['Authorization'] = `Bearer ${accessToken}`;
-            }
-
-            if (endpoint.includes('polling')) {
-                headers['x-polling-merchants'] = API_CONFIG.merchantUUID;
-            }
-
-            // Para endpoints que não são OAuth, adicionar Content-Type JSON
-            if (!endpoint.includes('authentication')) {
-                headers['Content-Type'] = 'application/json';
-            }
-
-            try {
-                console.log(`📤 Fazendo requisição: ${method} ${endpoint}`);
-                console.log('📋 Headers enviados:', headers);
-                console.log('📋 Body enviado:', body);
-                
-                // Usa 'endpoint' para ser consistente
-                const requestPayload = {
-                    endpoint: endpoint,  // ← Corrigido de 'path' para 'endpoint'
-                    method,
-                    headers,
-                    body: body ? JSON.stringify(body) : null
-                };
-                
-                console.log('📦 Payload completo para proxy:', requestPayload);
-                
-                const response = await fetch('/.netlify/functions/ifood-proxy', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestPayload)
-                });
-
-                console.log(`📨 Status da resposta: ${response.status} ${response.statusText}`);
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ error: 'Resposta inválida' }));
-                    console.error('❌ Erro na resposta do proxy:', errorData);
-                    
-                    // Construir mensagem de erro mais detalhada
-                    let errorMessage = `HTTP ${response.status}`;
-                    if (errorData.error) {
-                        errorMessage += `: ${errorData.error}`;
-                    }
-                    if (errorData.details && errorData.details.message) {
-                        errorMessage += ` - ${errorData.details.message}`;
-                    }
-                    
-                    throw new Error(errorMessage);
-                }
-
-const responseText = await response.text();
-let data = null;
-if (responseText.trim()) {
-    try {
-        data = JSON.parse(responseText);
-    } catch (err) {
-        console.warn('⚠️ Falha ao parsear JSON da resposta:', err);
-        data = { raw: responseText };
+    if (requiresAuth && accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
     }
-}
-                console.log(`✅ Resposta recebida para ${endpoint}:`, data);
-                
-                return data;
-            } catch (error) {
-                console.error('❌ Erro na requisição API:', error);
-                throw error;
+
+    if (endpoint.includes('polling')) {
+        headers['x-polling-merchants'] = API_CONFIG.merchantUUID;
+    }
+
+    // Para endpoints que não são OAuth, adicionar Content-Type JSON
+    if (!endpoint.includes('authentication')) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    try {
+        console.log(`📤 Fazendo requisição: ${method} ${endpoint}`);
+        console.log('📋 Headers enviados:', headers);
+        console.log('📋 Body enviado:', body);
+        
+        const requestPayload = {
+            endpoint: endpoint,
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : null
+        };
+        
+        console.log('📦 Payload completo para proxy:', requestPayload);
+        
+        const response = await fetch('/.netlify/functions/ifood-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestPayload)
+        });
+
+        console.log(`📨 Status da resposta: ${response.status} ${response.statusText}`);
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Resposta inválida' }));
+            console.error('❌ Erro na resposta do proxy:', errorData);
+            
+            let errorMessage = `HTTP ${response.status}`;
+            if (errorData.error) {
+                errorMessage += `: ${errorData.error}`;
+            }
+            if (errorData.details && errorData.details.message) {
+                errorMessage += ` - ${errorData.details.message}`;
+            }
+            
+            throw new Error(errorMessage);
+        }
+
+        const responseText = await response.text();
+        let data = null;
+        if (responseText.trim()) {
+            try {
+                data = JSON.parse(responseText);
+            } catch (err) {
+                console.warn('⚠️ Falha ao parsear JSON da resposta:', err);
+                data = { raw: responseText };
             }
         }
+
+        console.log(`✅ Resposta recebida para ${endpoint}:`, data);
+        return data;
+    } catch (error) {
+        console.error('❌ Erro na requisição API:', error);
+        throw error;
+    }
+}
 
         // Autenticação OAuth2 - logs detalhados
         async function authenticate() {
