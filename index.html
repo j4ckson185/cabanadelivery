@@ -507,6 +507,24 @@
             overflow-y: auto;
         }
 
+        /* Estilos específicos para modal de cancelamento */
+        .reason-option {
+            transition: all 0.2s ease;
+        }
+
+        .reason-option:hover {
+            background: #fef2f2;
+            border-color: #ef4444 !important;
+        }
+
+        .reason-option input[type="radio"]:checked + div {
+            color: #ef4444;
+        }
+
+        .reason-option input[type="radio"]:checked {
+            accent-color: #ef4444;
+        }
+
         .detail-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -1083,6 +1101,11 @@
                         console.log(`📋 DDCR - Na prática é um pedido confirmado (não despachado como deveria ser)`);
                     }
                     
+                    // Log para eventos de cancelamento
+                    if (event.code === 'CARF') {
+                        console.log(`❌ CARF - Solicitação de cancelamento falhou para o pedido`);
+                    }
+                    
                     if (event.code === 'PLC' || event.code === 'PLACED') {
                         const orderDetails = await getOrderDetails(event.orderId);
                         if (orderDetails) {
@@ -1101,13 +1124,27 @@
                                 'DSP': 'DISPATCHED',
                                 'DDCR': 'DDCR', // Na prática é pedido confirmado, não despachado 
                                 'CON': 'CONCLUDED',
-                                'CAN': 'CANCELLED'
+                                'CAN': 'CANCELLED',
+                                'CARF': oldStatus // Manter status atual se cancelamento falhou
                             };
-                            existingOrder.orderStatus = statusMap[event.code] || event.code;
+                            
+                            if (event.code === 'CARF') {
+                                // Cancelamento falhou - mostrar notificação
+                                showToast(`❌ Falha ao cancelar pedido #${existingOrder.displayId}`, 'error');
+                                console.log(`❌ Cancelamento falhou para pedido ${existingOrder.displayId}`);
+                            } else {
+                                existingOrder.orderStatus = statusMap[event.code] || event.code;
+                                hasChanges = true;
+                                console.log(`Status atualizado: ${oldStatus} → ${existingOrder.orderStatus}`);
+                                
+                                if (event.code === 'CAN') {
+                                    showToast(`✅ Pedido #${existingOrder.displayId} cancelado com sucesso`, 'success');
+                                } else {
+                                    showToast(`Pedido #${existingOrder.displayId} - ${getStatusLabel(existingOrder.orderStatus)}`, 'info');
+                                }
+                            }
+                            
                             orders.set(event.orderId, existingOrder);
-                            hasChanges = true;
-                            console.log(`Status atualizado: ${oldStatus} → ${existingOrder.orderStatus}`);
-                            showToast(`Pedido #${existingOrder.displayId} - ${getStatusLabel(existingOrder.orderStatus)}`, 'info');
                         } else {
                             const orderDetails = await getOrderDetails(event.orderId);
                             if (orderDetails) {
@@ -1219,33 +1256,198 @@
             }
         }
 
-        async function cancelOrder(orderId, reason = 'Cancelado pelo restaurante') {
+        // Buscar motivos de cancelamento disponíveis
+        async function getCancellationReasons(orderId) {
             try {
-                console.log(`Cancelando pedido: ${orderId} - Motivo: ${reason}`);
+                console.log(`🔍 Buscando motivos de cancelamento para pedido: ${orderId}`);
+                const response = await apiRequest(`/order/v1.0/orders/${orderId}/cancellationReasons`);
+                console.log('✅ Motivos de cancelamento obtidos:', response);
                 
-                // Primeiro consultar os motivos de cancelamento disponíveis
-                // Usando um motivo padrão por enquanto - pode ser melhorado para mostrar opções
+                // A resposta pode vir diretamente como array ou dentro de uma propriedade
+                const reasons = Array.isArray(response) ? response : (response?.reasons || response?.data || []);
+                
+                console.log('📋 Motivos processados:', reasons);
+                return reasons;
+            } catch (error) {
+                console.error('❌ Erro ao buscar motivos de cancelamento:', error);
+                return [];
+            }
+        }
+
+        // Mostrar modal de seleção de motivo de cancelamento
+        function showCancellationModal(orderId, reasons) {
+            // Criar modal de cancelamento
+            const cancelModal = document.createElement('div');
+            cancelModal.className = 'modal';
+            cancelModal.style.display = 'block';
+            cancelModal.id = 'cancelModal';
+            
+            const order = orders.get(orderId);
+            
+            cancelModal.innerHTML = `
+                <div class="modal-content" style="max-width: 500px;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                        <div class="modal-title">❌ Cancelar Pedido</div>
+                        <div class="modal-subtitle">Pedido #${order?.displayId || orderId}</div>
+                        <button class="close-btn" onclick="closeCancelModal()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <p style="margin-bottom: 1.5rem; color: #64748b;">
+                            Selecione o motivo do cancelamento:
+                        </p>
+                        <div style="display: grid; gap: 0.75rem;">
+                            ${reasons.map(reason => `
+                                <label class="reason-option" style="
+                                    display: flex; 
+                                    align-items: center; 
+                                    padding: 1rem; 
+                                    border: 2px solid #e2e8f0; 
+                                    border-radius: 8px; 
+                                    cursor: pointer; 
+                                    transition: all 0.2s ease;
+                                " onmouseover="this.style.borderColor='#ef4444'" onmouseout="this.style.borderColor='#e2e8f0'">
+                                    <input type="radio" name="cancelReason" value="${reason.code}" style="margin-right: 0.75rem;">
+                                    <div>
+                                        <div style="font-weight: 600; color: #1e293b;">${reason.description}</div>
+                                        ${reason.detailDescription ? `<div style="font-size: 0.875rem; color: #64748b; margin-top: 0.25rem;">${reason.detailDescription}</div>` : ''}
+                                    </div>
+                                </label>
+                            `).join('')}
+                        </div>
+                        
+                        <div style="margin-top: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151;">
+                                Observações adicionais (opcional):
+                            </label>
+                            <textarea 
+                                id="cancelObservations" 
+                                placeholder="Digite observações sobre o cancelamento..."
+                                style="
+                                    width: 100%; 
+                                    padding: 0.75rem; 
+                                    border: 1px solid #d1d5db; 
+                                    border-radius: 6px; 
+                                    resize: vertical; 
+                                    min-height: 80px;
+                                    font-family: inherit;
+                                "
+                            ></textarea>
+                        </div>
+                    </div>
+                    <div class="action-section">
+                        <div class="action-buttons">
+                            <button class="btn btn-cancel" onclick="confirmCancellation('${orderId}')">
+                                ❌ Confirmar Cancelamento
+                            </button>
+                            <button class="btn" style="background: #6b7280; color: white;" onclick="closeCancelModal()">
+                                Voltar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(cancelModal);
+        }
+
+        // Fechar modal de cancelamento
+        function closeCancelModal() {
+            const cancelModal = document.getElementById('cancelModal');
+            if (cancelModal) {
+                cancelModal.remove();
+            }
+        }
+
+        // Confirmar cancelamento com motivo selecionado
+        async function confirmCancellation(orderId) {
+            try {
+                const selectedReason = document.querySelector('input[name="cancelReason"]:checked');
+                const observations = document.getElementById('cancelObservations').value.trim();
+                
+                if (!selectedReason) {
+                    showToast('❌ Por favor, selecione um motivo para o cancelamento', 'error');
+                    return;
+                }
+                
+                const reasonCode = selectedReason.value;
+                const reasonText = selectedReason.parentElement.querySelector('div div').textContent;
+                
+                console.log(`🔄 Cancelando pedido: ${orderId}`);
+                console.log(`📋 Motivo: ${reasonCode} - ${reasonText}`);
+                console.log(`📝 Observações: ${observations || 'Nenhuma'}`);
+                
+                const cancelPayload = {
+                    reason: reasonCode
+                };
+                
+                if (observations) {
+                    cancelPayload.detailReason = observations;
+                }
+                
                 await apiRequest(`/order/v1.0/orders/${orderId}/requestCancellation`, {
                     method: 'POST',
-                    body: { 
-                        reason: 'STORE_UNAVAILABLE', // Motivo padrão - pode ser customizado
-                        detailReason: reason 
-                    }
+                    body: cancelPayload
                 });
                 
+                // Fechar modal de cancelamento
+                closeCancelModal();
+                
+                // Fechar modal principal se estiver aberto
+                closeModal();
+                
                 const order = orders.get(orderId);
-                if (order) {
-                    order.orderStatus = 'CANCELLED';
-                    orders.set(orderId, order);
-                    saveToStorage();
-                    applyFilters();
-                    renderOrders();
-                    closeModal();
-                    showToast(`Pedido #${order.displayId} cancelado com sucesso!`, 'success');
-                }
+                showToast(`🔄 Solicitação de cancelamento enviada para o pedido #${order?.displayId || orderId}`, 'info');
+                console.log('✅ Solicitação de cancelamento enviada com sucesso');
+                
+                // Nota: O status será atualizado quando receber o evento CAN ou CARF no polling
+                
             } catch (error) {
-                console.error('Erro ao cancelar pedido:', error);
+                console.error('❌ Erro ao cancelar pedido:', error);
                 showToast('Erro ao cancelar pedido: ' + error.message, 'error');
+            }
+        }
+
+        // Função principal de cancelamento (agora busca os motivos primeiro)
+        async function cancelOrder(orderId) {
+            try {
+                console.log(`🔍 Iniciando processo de cancelamento para pedido: ${orderId}`);
+                
+                // Buscar motivos de cancelamento válidos
+                const reasons = await getCancellationReasons(orderId);
+                
+                if (!reasons || reasons.length === 0) {
+                    console.error('❌ Nenhum motivo de cancelamento disponível');
+                    
+                    // Tentar motivos padrão como fallback
+                    const defaultReasons = [
+                        {
+                            code: 'STORE_UNAVAILABLE',
+                            description: 'Loja Indisponível',
+                            detailDescription: 'A loja não pode atender o pedido no momento'
+                        },
+                        {
+                            code: 'ITEM_UNAVAILABLE',
+                            description: 'Item Indisponível',
+                            detailDescription: 'Um ou mais itens do pedido não estão disponíveis'
+                        },
+                        {
+                            code: 'OTHER',
+                            description: 'Outros Motivos',
+                            detailDescription: 'Cancelamento por outros motivos'
+                        }
+                    ];
+                    
+                    console.log('🔄 Usando motivos padrão como fallback');
+                    showCancellationModal(orderId, defaultReasons);
+                    return;
+                }
+                
+                // Mostrar modal para selecionar motivo
+                showCancellationModal(orderId, reasons);
+                
+            } catch (error) {
+                console.error('❌ Erro no processo de cancelamento:', error);
+                showToast('Erro ao iniciar cancelamento: ' + error.message, 'error');
             }
         }
 
@@ -1323,7 +1525,8 @@
                 'CONCLUDED': 'concluded',
                 'CON': 'concluded',
                 'CANCELLED': 'cancelled',
-                'CAN': 'cancelled'
+                'CAN': 'cancelled',
+                'CARF': 'placed' // Erro de cancelamento - pedido continua ativo
             };
             return statusMap[status] || 'placed';
         }
@@ -1340,7 +1543,8 @@
                 'CONCLUDED': 'Concluído',
                 'CON': 'Concluído',
                 'CANCELLED': 'Cancelado',
-                'CAN': 'Cancelado'
+                'CAN': 'Cancelado',
+                'CARF': 'Erro no Cancelamento'
             };
             return statusMap[status] || status;
         }
@@ -1357,7 +1561,8 @@
                 'CONCLUDED': 'status-concluded',
                 'CON': 'status-concluded',
                 'CANCELLED': 'status-cancelled',
-                'CAN': 'status-cancelled'
+                'CAN': 'status-cancelled',
+                'CARF': 'status-cancelled' // Tratamos erro de cancelamento como cancelado visualmente
             };
             return statusMap[status] || 'status-placed';
         }
@@ -1861,8 +2066,8 @@
                         ❌ Cancelar
                     </button>
                 `;
-            } else if (status === 'CONFIRMED' || status === 'CFM' || status === 'DDCR') {
-                console.log(`🚨 Caso CONFIRMED/CFM/DDCR`);
+            } else if (status === 'CONFIRMED' || status === 'CFM' || status === 'DDCR' || status === 'CARF') {
+                console.log(`🚨 Caso CONFIRMED/CFM/DDCR/CARF`);
                 buttons = `
                     <button class="btn-small btn-dispatch" onclick="event.stopPropagation(); dispatchOrder('${order.id}')">
                         🚀 Despachar
@@ -1934,6 +2139,7 @@
                 case 'CONFIRMED':
                 case 'CFM':
                 case 'DDCR': // Na prática é pedido confirmado
+                case 'CARF': // Erro de cancelamento - pedido continua ativo
                     buttons = `
                         <div class="action-buttons">
                             <button class="btn btn-dispatch" onclick="dispatchOrder('${order.id}')">
@@ -2080,10 +2286,22 @@
             }
         });
 
+        // Fechar modal de cancelamento clicando fora
+        document.addEventListener('click', (e) => {
+            const cancelModal = document.getElementById('cancelModal');
+            if (cancelModal && e.target === cancelModal) {
+                closeCancelModal();
+            }
+        });
+
         // Tecla ESC para fechar modal
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && modal.style.display === 'block') {
-                closeModal();
+            if (e.key === 'Escape') {
+                if (document.getElementById('cancelModal')) {
+                    closeCancelModal();
+                } else if (modal.style.display === 'block') {
+                    closeModal();
+                }
             }
         });
 
@@ -2125,6 +2343,15 @@
                 clearTimeout(pollingTimer);
             }
         });
+
+        // Tornar funções globais para serem acessíveis pelos event handlers inline
+        window.confirmOrder = confirmOrder;
+        window.dispatchOrder = dispatchOrder;
+        window.cancelOrder = cancelOrder;
+        window.openOrderModal = openOrderModal;
+        window.closeModal = closeModal;
+        window.closeCancelModal = closeCancelModal;
+        window.confirmCancellation = confirmCancellation;
     </script>
 </body>
 </html>
