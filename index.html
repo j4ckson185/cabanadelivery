@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDV iFood - Gestão de Pedidos</title>
+    <title>Cabana Delivery - Gestão de Pedidos</title>
     <style>
         * {
             margin: 0;
@@ -52,6 +52,23 @@
             gap: 1rem;
         }
 
+        .btn-clear {
+            padding: 0.5rem 1rem;
+            background: #64748b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-clear:hover {
+            background: #475569;
+            transform: translateY(-1px);
+        }
+
         .connection-status {
             display: flex;
             align-items: center;
@@ -85,7 +102,7 @@
             margin: 0 auto;
             padding: 2rem;
             display: grid;
-            grid-template-rows: auto 1fr;
+            grid-template-rows: auto auto 1fr;
             gap: 2rem;
             min-height: calc(100vh - 120px);
         }
@@ -163,7 +180,11 @@
         .search-section {
             display: flex;
             gap: 1rem;
-            margin-bottom: 1rem;
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
         }
 
         .search-input {
@@ -181,77 +202,73 @@
             box-shadow: 0 0 0 3px rgba(234, 29, 44, 0.1);
         }
 
-        /* Orders List */
-        .orders-section {
+        .section-title {
+            color: #64748b;
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Orders Grid */
+        .orders-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            padding: 1rem 0;
+        }
+
+        .order-card {
             background: white;
-            border-radius: 12px;
+            border-radius: 16px;
             border: 1px solid #e2e8f0;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             overflow: hidden;
-        }
-
-        .orders-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid #e2e8f0;
-            background: #f8fafc;
-        }
-
-        .orders-header h2 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #1e293b;
-        }
-
-        .orders-list {
-            max-height: calc(100vh - 300px);
-            overflow-y: auto;
-        }
-
-        .order-item {
-            display: grid;
-            grid-template-columns: auto 1fr auto auto;
-            gap: 1rem;
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #f1f5f9;
             cursor: pointer;
             transition: all 0.2s ease;
-            align-items: center;
+            position: relative;
         }
 
-        .order-item:hover {
-            background: #f8fafc;
+        .order-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            border-color: #EA1D2C;
         }
 
-        .order-item:last-child {
-            border-bottom: none;
+        .order-card-header {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            position: relative;
         }
 
-        .order-status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            flex-shrink: 0;
+        .order-status-badge {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .status-placed { background: #f59e0b; }
-        .status-confirmed { background: #3b82f6; }
-        .status-dispatched { background: #8b5cf6; }
-        .status-concluded { background: #10b981; }
-        .status-cancelled { background: #ef4444; }
-
-        .order-main-info {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
+        .status-placed { background: #fef3c7; color: #92400e; }
+        .status-confirmed { background: #dbeafe; color: #1e40af; }
+        .status-dispatched { background: #e0e7ff; color: #5b21b6; }
+        .status-concluded { background: #dcfce7; color: #166534; }
+        .status-cancelled { background: #fee2e2; color: #dc2626; }
 
         .order-id {
-            font-weight: 600;
-            font-size: 1rem;
+            font-size: 1.25rem;
+            font-weight: 700;
             color: #1e293b;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            margin-bottom: 0.25rem;
         }
 
         .real-order-badge {
@@ -259,31 +276,96 @@
             color: white;
             padding: 0.125rem 0.5rem;
             border-radius: 6px;
-            font-size: 0.6875rem;
+            font-size: 0.625rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
-        .order-customer {
-            color: #64748b;
-            font-size: 0.875rem;
-        }
-
         .order-time {
             color: #64748b;
+            font-size: 0.75rem;
+        }
+
+        .order-card-body {
+            padding: 1rem;
+        }
+
+        .order-info-grid {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .info-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
             font-size: 0.875rem;
-            text-align: right;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .icon-customer { background: #dbeafe; color: #1e40af; }
+        .icon-address { background: #fef3c7; color: #92400e; }
+        .icon-payment { background: #dcfce7; color: #166534; }
+        .icon-orders { background: #e0e7ff; color: #5b21b6; }
+        .icon-prep { background: #fee2e2; color: #dc2626; }
+
+        .info-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            color: #1e293b;
+            font-weight: 500;
+            font-size: 0.875rem;
+            word-break: break-word;
         }
 
         .order-total {
-            font-weight: 600;
-            font-size: 1.125rem;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 0.75rem;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .total-label {
+            font-size: 0.75rem;
+            color: #166534;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .total-value {
+            font-size: 1.5rem;
+            font-weight: 700;
             color: #059669;
-            text-align: right;
         }
 
         .empty-state {
+            grid-column: 1 / -1;
             padding: 4rem 2rem;
             text-align: center;
             color: #64748b;
@@ -592,19 +674,12 @@
                 flex-direction: column;
             }
 
-            .detail-grid {
+            .orders-grid {
                 grid-template-columns: 1fr;
             }
 
-            .order-item {
-                grid-template-columns: auto 1fr;
-                gap: 0.75rem;
-            }
-
-            .order-time,
-            .order-total {
-                text-align: left;
-                grid-column: 2;
+            .detail-grid {
+                grid-template-columns: 1fr;
             }
 
             .modal-content {
@@ -623,9 +698,12 @@
     <div class="header">
         <div class="header-content">
             <div class="logo">
-                🍔 PDV iFood
+                🏖️ Cabana Delivery
             </div>
             <div class="header-actions">
+                <button id="clearOrdersBtn" class="btn-clear">
+                    🗑️ Limpar Pedidos
+                </button>
                 <div id="connectionStatus" class="connection-status status-connecting">
                     <div class="status-indicator"></div>
                     <span>Conectando...</span>
@@ -660,19 +738,19 @@
             </button>
         </div>
 
-        <!-- Orders Section -->
-        <div class="orders-section">
-            <div class="orders-header">
-                <div class="search-section">
-                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar por número do pedido ou nome do cliente...">
-                </div>
-                <h2 id="sectionTitle">Todos os Pedidos</h2>
+        <!-- Search Section -->
+        <div class="search-section">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar por número do pedido ou nome do cliente...">
+            <div class="section-title" id="sectionTitle">
+                📋 Exibindo todos os pedidos
             </div>
-            <div class="orders-list" id="ordersList">
-                <div class="empty-state">
-                    <div class="empty-state-icon">📭</div>
-                    <p>Nenhum pedido encontrado</p>
-                </div>
+        </div>
+
+        <!-- Orders Grid -->
+        <div class="orders-grid" id="ordersGrid">
+            <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <p>Nenhum pedido encontrado</p>
             </div>
         </div>
     </div>
@@ -715,10 +793,65 @@
         // Elementos DOM
         const connectionStatus = document.getElementById('connectionStatus');
         const searchInput = document.getElementById('searchInput');
-        const ordersList = document.getElementById('ordersList');
+        const ordersGrid = document.getElementById('ordersGrid');
         const sectionTitle = document.getElementById('sectionTitle');
         const modal = document.getElementById('orderModal');
         const toast = document.getElementById('toast');
+        const clearOrdersBtn = document.getElementById('clearOrdersBtn');
+
+        // LocalStorage keys
+        const STORAGE_KEYS = {
+            ORDERS: 'cabana_delivery_orders',
+            ACCESS_TOKEN: 'cabana_delivery_token'
+        };
+
+        // Persistência dos dados
+        function saveToStorage() {
+            try {
+                const ordersData = {};
+                for (const [key, value] of orders) {
+                    ordersData[key] = value;
+                }
+                localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(ordersData));
+                console.log('📦 Pedidos salvos no localStorage');
+            } catch (error) {
+                console.error('❌ Erro ao salvar no localStorage:', error);
+            }
+        }
+
+        function loadFromStorage() {
+            try {
+                const ordersData = localStorage.getItem(STORAGE_KEYS.ORDERS);
+                if (ordersData) {
+                    const parsedOrders = JSON.parse(ordersData);
+                    orders.clear();
+                    for (const [key, value] of Object.entries(parsedOrders)) {
+                        orders.set(key, value);
+                    }
+                    console.log(`📦 ${orders.size} pedidos carregados do localStorage`);
+                    return true;
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar do localStorage:', error);
+            }
+            return false;
+        }
+
+        function clearStorage() {
+            try {
+                localStorage.removeItem(STORAGE_KEYS.ORDERS);
+                localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+                orders.clear();
+                filteredOrders.clear();
+                applyFilters();
+                renderOrders();
+                showToast('🗑️ Pedidos limpos com sucesso!', 'success');
+                console.log('🗑️ Storage limpo');
+            } catch (error) {
+                console.error('❌ Erro ao limpar storage:', error);
+                showToast('Erro ao limpar pedidos', 'error');
+            }
+        }
 
         // Função para fazer requisições via proxy Netlify
         async function apiRequest(endpoint, options = {}) {
@@ -886,6 +1019,7 @@
         // Processar eventos
         async function processEvents(events) {
             console.log(`Processando ${events.length} eventos...`);
+            let hasChanges = false;
             
             for (const event of events) {
                 try {
@@ -895,6 +1029,7 @@
                         const orderDetails = await getOrderDetails(event.orderId);
                         if (orderDetails) {
                             orders.set(event.orderId, orderDetails);
+                            hasChanges = true;
                             console.log(`🎉 NOVO PEDIDO: ${orderDetails.displayId}`);
                             showToast(`🎉 Novo Pedido: #${orderDetails.displayId} - ${orderDetails.customer?.name || 'Cliente'}`, 'success');
                         }
@@ -911,6 +1046,7 @@
                             };
                             existingOrder.orderStatus = statusMap[event.code] || event.code;
                             orders.set(event.orderId, existingOrder);
+                            hasChanges = true;
                             console.log(`Status atualizado: ${oldStatus} → ${existingOrder.orderStatus}`);
                             showToast(`Pedido #${existingOrder.displayId} - ${getStatusLabel(existingOrder.orderStatus)}`, 'info');
                         } else {
@@ -924,6 +1060,7 @@
                                 };
                                 orderDetails.orderStatus = statusMap[event.code] || event.code;
                                 orders.set(event.orderId, orderDetails);
+                                hasChanges = true;
                                 showToast(`Pedido: #${orderDetails.displayId} - ${getStatusLabel(orderDetails.orderStatus)}`, 'info');
                             }
                         }
@@ -933,8 +1070,11 @@
                 }
             }
 
-            applyFilters();
-            renderOrders();
+            if (hasChanges) {
+                saveToStorage();
+                applyFilters();
+                renderOrders();
+            }
             
             if (events.length > 0) {
                 const eventIds = events.map(e => e.id);
@@ -983,6 +1123,7 @@
                 if (order) {
                     order.orderStatus = 'CONFIRMED';
                     orders.set(orderId, order);
+                    saveToStorage();
                     applyFilters();
                     renderOrders();
                     closeModal();
@@ -1003,6 +1144,7 @@
                 if (order) {
                     order.orderStatus = 'DISPATCHED';
                     orders.set(orderId, order);
+                    saveToStorage();
                     applyFilters();
                     renderOrders();
                     closeModal();
@@ -1024,6 +1166,7 @@
                 if (order) {
                     order.orderStatus = 'CANCELLED';
                     orders.set(orderId, order);
+                    saveToStorage();
                     applyFilters();
                     renderOrders();
                     closeModal();
@@ -1132,9 +1275,9 @@
             // Atualizar contadores
             updateCounters();
             
-            // Renderizar lista
+            // Renderizar grid
             if (filteredOrders.size === 0) {
-                ordersList.innerHTML = `
+                ordersGrid.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">📭</div>
                         <p>Nenhum pedido encontrado</p>
@@ -1146,7 +1289,7 @@
             const ordersArray = Array.from(filteredOrders.values())
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-            ordersList.innerHTML = ordersArray.map(order => createOrderCard(order)).join('');
+            ordersGrid.innerHTML = ordersArray.map(order => createOrderCard(order)).join('');
         }
 
         function updateCounters() {
@@ -1179,22 +1322,89 @@
                 minute: '2-digit' 
             });
 
-            const total = formatCurrency(order.total?.orderAmount || 0);
+            const dateString = createdAt.toLocaleDateString('pt-BR');
             const statusClass = getStatusClass(order.orderStatus);
-            const isRealOrder = true; // Todos os pedidos agora são reais
+            const statusLabel = getStatusLabel(order.orderStatus);
+
+            // Endereço simplificado
+            const address = order.delivery?.deliveryAddress;
+            const addressText = address ? 
+                `${address.streetName || ''} ${address.streetNumber || ''}, ${address.neighborhood || ''}`.trim() : 
+                'Retirada no local';
+
+            // Método de pagamento principal
+            const mainPayment = order.payments?.methods?.[0];
+            const paymentText = mainPayment ? getPaymentMethodLabel(mainPayment) : 'N/A';
+
+            // Valor total - corrigindo para não dividir por 100
+            const total = formatCurrency(order.total?.orderAmount || 0);
+
+            // Preparação
+            const prepTime = order.preparationStartDateTime ? 
+                new Date(order.preparationStartDateTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 
+                'Não informado';
 
             return `
-                <div class="order-item" onclick="openOrderModal('${order.id}')">
-                    <div class="order-status-indicator ${statusClass}"></div>
-                    <div class="order-main-info">
+                <div class="order-card" onclick="openOrderModal('${order.id}')">
+                    <div class="order-card-header">
+                        <div class="order-status-badge ${statusClass}">
+                            ${statusLabel}
+                        </div>
                         <div class="order-id">
                             #${order.displayId || order.id}
-                            ${isRealOrder ? '<span class="real-order-badge">iFood</span>' : ''}
+                            <span class="real-order-badge">iFood</span>
                         </div>
-                        <div class="order-customer">${order.customer?.name || 'Cliente'}</div>
+                        <div class="order-time">${timeString} • ${dateString}</div>
                     </div>
-                    <div class="order-time">${timeString}</div>
-                    <div class="order-total">${total}</div>
+                    
+                    <div class="order-card-body">
+                        <div class="order-info-grid">
+                            <div class="info-item">
+                                <div class="info-icon icon-customer">👤</div>
+                                <div class="info-content">
+                                    <div class="info-label">Cliente</div>
+                                    <div class="info-value">${order.customer?.name || 'Nome não informado'}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="info-item">
+                                <div class="info-icon icon-address">📍</div>
+                                <div class="info-content">
+                                    <div class="info-label">Endereço</div>
+                                    <div class="info-value">${addressText}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="info-item">
+                                <div class="info-icon icon-payment">💳</div>
+                                <div class="info-content">
+                                    <div class="info-label">Pagamento</div>
+                                    <div class="info-value">${paymentText}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="info-item">
+                                <div class="info-icon icon-orders">📊</div>
+                                <div class="info-content">
+                                    <div class="info-label">Pedidos na Loja</div>
+                                    <div class="info-value">${order.customer?.ordersCountOnMerchant || 'N/A'}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="info-item">
+                                <div class="info-icon icon-prep">⏰</div>
+                                <div class="info-content">
+                                    <div class="info-label">Início do Preparo</div>
+                                    <div class="info-value">${prepTime}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="order-total">
+                            <div class="total-label">Total do Pedido</div>
+                            <div class="total-value">${total}</div>
+                        </div>
+                    </div>
                 </div>
             `;
         }
@@ -1588,11 +1798,12 @@
             return label;
         }
 
+        // Função corrigida para não dividir por 100
         function formatCurrency(value) {
             return new Intl.NumberFormat('pt-BR', {
                 style: 'currency',
                 currency: 'BRL'
-            }).format(value / 100);
+            }).format(value); // Removido a divisão por 100
         }
 
         function formatCPF(cpf) {
@@ -1618,11 +1829,19 @@
                 btn.classList.add('active');
                 
                 currentCategory = btn.dataset.category;
-                sectionTitle.textContent = btn.querySelector('.category-title').textContent;
+                const categoryText = btn.querySelector('.category-title').textContent;
+                sectionTitle.textContent = `📋 Exibindo: ${categoryText}`;
                 
                 applyFilters();
                 renderOrders();
             });
+        });
+
+        // Clear orders button
+        clearOrdersBtn.addEventListener('click', () => {
+            if (confirm('Tem certeza que deseja limpar todos os pedidos? Esta ação não pode ser desfeita.')) {
+                clearStorage();
+            }
         });
 
         // Fechar modal clicando fora
@@ -1641,7 +1860,13 @@
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 PDV iFood iniciando...');
+            console.log('🏖️ Cabana Delivery iniciando...');
+            
+            // Carregar pedidos salvos
+            const hasStoredOrders = loadFromStorage();
+            if (hasStoredOrders) {
+                showToast(`${orders.size} pedidos carregados do storage`, 'info');
+            }
             
             applyFilters();
             renderOrders();
@@ -1651,7 +1876,7 @@
                 authenticate();
             }, 1000);
             
-            console.log('✅ PDV inicializado');
+            console.log('✅ Cabana Delivery inicializado');
         });
 
         // Cleanup
