@@ -833,7 +833,7 @@
                 console.log('🔔 Confirmando eventos:', eventIds);
                 
                 // Primeira tentativa: URL com dois pontos (mais comum na docs)
-                await apiRequest('/events/v1.0/events:acknowledgment', {
+                await apiRequest('/events/v1.0/events/acknowledgment', {
                     method: 'POST',
                     body: { eventIds }
                 });
