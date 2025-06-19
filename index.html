@@ -269,7 +269,7 @@
         }
 
         .status-placed { background: #fef3c7; color: #92400e; }
-        .status-confirmed { background: #dbeafe; color: #1e40af; }
+        .status-confirmed { background: #8b5cf6; color: white; }
         .status-dispatched { background: #e0e7ff; color: #5b21b6; }
         .status-concluded { background: #dcfce7; color: #166534; }
         .status-cancelled { background: #fee2e2; color: #dc2626; }
@@ -1025,7 +1025,7 @@
                 🏖️ Cabana Delivery
             </div>
             <div class="header-actions">
-                <button id="mapBtn" class="btn-clear" style="background: #8b5cf6; margin-right: 1rem;">
+                <button id="mapBtn" class="btn-clear" style="background: #3b82f6; margin-right: 1rem;">
                     🗺️ Mapa
                 </button>
                 <button id="clearOrdersBtn" class="btn-clear">
@@ -1122,16 +1122,20 @@
                         <span>Confirmado</span>
                     </div>
                     <div class="legend-item">
-                        <div class="legend-color status-dispatched"></div>
-                        <span>Despachado</span>
+                        <div class="legend-color status-sent"></div>
+                        <span>Enviado</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color status-accepted"></div>
                         <span>Aceito</span>
                     </div>
                     <div class="legend-item">
-                        <div class="legend-color status-sent"></div>
-                        <span>Enviado</span>
+                        <div class="legend-color status-dispatched"></div>
+                        <span>Despachado</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #22c55e;"></div>
+                        <span>Concluído</span>
                     </div>
                 </div>
             </div>
@@ -2703,7 +2707,13 @@
             // Filtrar apenas pedidos ativos (não concluídos nem cancelados)
             const activeOrders = Array.from(orders.values()).filter(order => {
                 const status = order.orderStatus || 'PLACED';
-                return !['CONCLUDED', 'CON', 'CANCELLED', 'CAN'].includes(status);
+                const delivery = deliveryAssignments.get(order.id);
+                
+                // Não mostrar pedidos concluídos via API ou via motoboy
+                if (['CONCLUDED', 'CON', 'CANCELLED', 'CAN'].includes(status)) return false;
+                if (delivery && delivery.status === 'concluded') return false;
+                
+                return true;
             });
             
             console.log(`📍 Carregando ${activeOrders.length} pedidos ativos no mapa`);
@@ -2742,11 +2752,14 @@
             if (delivery) {
                 if (delivery.status === 'sent') return 'status-sent';
                 if (delivery.status === 'accepted') return 'status-accepted';
+                if (delivery.status === 'dispatched') return 'status-dispatched';
+                if (delivery.status === 'concluded') return 'status-concluded';
             }
             
             const status = order.orderStatus || 'PLACED';
             if (['CONFIRMED', 'CFM', 'DDCR'].includes(status)) return 'status-confirmed';
             if (['DISPATCHED', 'DSP'].includes(status)) return 'status-dispatched';
+            if (['CONCLUDED', 'CON'].includes(status)) return 'status-concluded';
             return 'status-placed';
         }
         
@@ -2771,23 +2784,24 @@
             const delivery = deliveryAssignments.get(order.id);
             const color = getMarkerColor(order, delivery);
             
+            // Marcador quadrado maior
             const markerIcon = L.divIcon({
                 html: `<div style="
                     background: ${color}; 
                     color: white; 
-                    border-radius: 50%; 
-                    width: 25px; 
-                    height: 25px; 
+                    width: 35px; 
+                    height: 35px; 
                     display: flex; 
                     align-items: center; 
                     justify-content: center; 
-                    font-size: 11px;
+                    font-size: 12px;
                     font-weight: bold;
-                    border: 2px solid white;
-                    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                    border: 3px solid white;
+                    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+                    border-radius: 4px;
                 ">${order.displayId}</div>`,
-                iconSize: [25, 25],
-                iconAnchor: [12.5, 12.5]
+                iconSize: [35, 35],
+                iconAnchor: [17.5, 17.5]
             });
             
             const customerName = order.customer?.name || 'Cliente';
@@ -2828,11 +2842,14 @@
             if (delivery) {
                 if (delivery.status === 'sent') return '#f97316'; // Laranja - enviado
                 if (delivery.status === 'accepted') return '#eab308'; // Amarelo - aceito
+                if (delivery.status === 'dispatched') return '#06b6d4'; // Azul piscina - despachado pelo motoboy
+                if (delivery.status === 'concluded') return '#22c55e'; // Verde - concluído pelo motoboy
             }
             
             const status = order.orderStatus || 'PLACED';
             if (['CONFIRMED', 'CFM', 'DDCR'].includes(status)) return '#8b5cf6'; // Roxo - confirmado
-            if (['DISPATCHED', 'DSP'].includes(status)) return '#06b6d4'; // Azul piscina - despachado
+            if (['DISPATCHED', 'DSP'].includes(status)) return '#06b6d4'; // Azul piscina - despachado via API
+            if (['CONCLUDED', 'CON'].includes(status)) return '#22c55e'; // Verde - concluído via API
             return '#f59e0b'; // Amarelo escuro - placed
         }
         
