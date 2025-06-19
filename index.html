@@ -147,12 +147,6 @@
             color: #EA1D2C;
         }
 
-        .category-btn.all-orders.active {
-            border-color: #3b82f6;
-            background: #eff6ff;
-            color: #3b82f6;
-        }
-
         .category-title {
             font-weight: 600;
             font-size: 0.875rem;
@@ -166,10 +160,6 @@
             font-size: 0.75rem;
             font-weight: 600;
             min-width: 24px;
-        }
-
-        .category-btn.all-orders .category-count {
-            background: #3b82f6;
         }
 
         .category-btn.active .category-count {
@@ -716,11 +706,7 @@
     <div class="main-layout">
         <!-- Category Filters -->
         <div class="category-filters">
-            <button class="category-btn all-orders active" data-category="all">
-                <div class="category-title">📋 Todos os Pedidos</div>
-                <div class="category-count" id="countAll">0</div>
-            </button>
-            <button class="category-btn" data-category="placed">
+            <button class="category-btn active" data-category="placed">
                 <div class="category-title">🔥 Em Preparo</div>
                 <div class="category-count" id="countPlaced">0</div>
             </button>
@@ -742,7 +728,7 @@
         <div class="search-section">
             <input type="text" id="searchInput" class="search-input" placeholder="🔍 Buscar por número do pedido ou nome do cliente...">
             <div class="section-title" id="sectionTitle">
-                📋 Exibindo todos os pedidos
+                🔥 Exibindo: Em Preparo
             </div>
         </div>
 
@@ -786,7 +772,7 @@
         let accessToken = null;
         let orders = new Map();
         let filteredOrders = new Map();
-        let currentCategory = 'all';
+        let currentCategory = 'placed';
         let pollingTimer = null;
         let isPolling = false;
 
@@ -1115,6 +1101,7 @@
         // Ações do pedido
         async function confirmOrder(orderId) {
             try {
+                console.log(`Confirmando pedido: ${orderId}`);
                 await apiRequest(`/order/v1.0/orders/${orderId}/confirm`, {
                     method: 'POST'
                 });
@@ -1127,15 +1114,17 @@
                     applyFilters();
                     renderOrders();
                     closeModal();
-                    showToast('Pedido confirmado com sucesso!', 'success');
+                    showToast(`Pedido #${order.displayId} confirmado com sucesso!`, 'success');
                 }
             } catch (error) {
+                console.error('Erro ao confirmar pedido:', error);
                 showToast('Erro ao confirmar pedido: ' + error.message, 'error');
             }
         }
 
         async function dispatchOrder(orderId) {
             try {
+                console.log(`Despachando pedido: ${orderId}`);
                 await apiRequest(`/order/v1.0/orders/${orderId}/dispatch`, {
                     method: 'POST'
                 });
@@ -1148,18 +1137,26 @@
                     applyFilters();
                     renderOrders();
                     closeModal();
-                    showToast('Pedido despachado com sucesso!', 'success');
+                    showToast(`Pedido #${order.displayId} despachado com sucesso!`, 'success');
                 }
             } catch (error) {
+                console.error('Erro ao despachar pedido:', error);
                 showToast('Erro ao despachar pedido: ' + error.message, 'error');
             }
         }
 
         async function cancelOrder(orderId, reason = 'Cancelado pelo restaurante') {
             try {
+                console.log(`Cancelando pedido: ${orderId} - Motivo: ${reason}`);
+                
+                // Primeiro consultar os motivos de cancelamento disponíveis
+                // Usando um motivo padrão por enquanto - pode ser melhorado para mostrar opções
                 await apiRequest(`/order/v1.0/orders/${orderId}/requestCancellation`, {
                     method: 'POST',
-                    body: { reason }
+                    body: { 
+                        reason: 'STORE_UNAVAILABLE', // Motivo padrão - pode ser customizado
+                        detailReason: reason 
+                    }
                 });
                 
                 const order = orders.get(orderId);
@@ -1170,9 +1167,10 @@
                     applyFilters();
                     renderOrders();
                     closeModal();
-                    showToast('Pedido cancelado com sucesso!', 'success');
+                    showToast(`Pedido #${order.displayId} cancelado com sucesso!`, 'success');
                 }
             } catch (error) {
+                console.error('Erro ao cancelar pedido:', error);
                 showToast('Erro ao cancelar pedido: ' + error.message, 'error');
             }
         }
@@ -1209,11 +1207,9 @@
                     matches = matches && (customerName.includes(searchTerm) || displayId.includes(searchTerm));
                 }
 
-                // Filtro de categoria
-                if (currentCategory !== 'all') {
-                    const orderCategory = getOrderCategory(order.orderStatus);
-                    matches = matches && orderCategory === currentCategory;
-                }
+                // Filtro de categoria - sempre aplicar já que não tem mais "all"
+                const orderCategory = getOrderCategory(order.orderStatus);
+                matches = matches && orderCategory === currentCategory;
 
                 if (matches) {
                     filteredOrders.set(orderId, order);
@@ -1294,7 +1290,6 @@
 
         function updateCounters() {
             const counts = {
-                all: orders.size,
                 placed: 0,
                 dispatched: 0,
                 concluded: 0,
@@ -1308,7 +1303,6 @@
                 }
             }
 
-            document.getElementById('countAll').textContent = counts.all;
             document.getElementById('countPlaced').textContent = counts.placed;
             document.getElementById('countDispatched').textContent = counts.dispatched;
             document.getElementById('countConcluded').textContent = counts.concluded;
@@ -1421,7 +1415,17 @@
             modalTitle.textContent = `Pedido #${order.displayId || order.id}`;
             modalSubtitle.textContent = `${getStatusLabel(order.orderStatus)} • ${new Date(order.createdAt).toLocaleString('pt-BR')}`;
             modalBody.innerHTML = generateOrderDetails(order);
-            actionSection.innerHTML = generateActionButtons(order);
+            
+            // Gerar e inserir botões de ação
+            const actionButtonsHTML = generateActionButtons(order);
+            console.log(`Modal ${orderId}: Botões de ação gerados:`, actionButtonsHTML);
+            
+            if (actionButtonsHTML) {
+                actionSection.innerHTML = actionButtonsHTML;
+                actionSection.style.display = 'block';
+            } else {
+                actionSection.style.display = 'none';
+            }
             
             modal.style.display = 'block';
         }
@@ -1707,6 +1711,8 @@
             const status = order.orderStatus || 'PLACED';
             let buttons = '';
 
+            console.log(`Gerando botões para pedido ${order.id} com status: ${status}`);
+
             switch (status) {
                 case 'PLACED':
                 case 'PLC':
@@ -1744,11 +1750,29 @@
                         </div>
                     `;
                     break;
-                default:
+                case 'CONCLUDED':
+                case 'CON':
+                case 'CANCELLED': 
+                case 'CAN':
+                    // Nenhum botão para pedidos concluídos ou cancelados
                     buttons = '';
+                    break;
+                default:
+                    // Para status não reconhecidos, mostrar apenas confirmar se parecer novo
+                    buttons = `
+                        <div class="action-buttons">
+                            <button class="btn btn-confirm" onclick="confirmOrder('${order.id}')">
+                                ✅ Confirmar Pedido
+                            </button>
+                            <button class="btn btn-cancel" onclick="cancelOrder('${order.id}')">
+                                ❌ Cancelar Pedido
+                            </button>
+                        </div>
+                    `;
                     break;
             }
 
+            console.log(`Botões gerados: ${buttons ? 'Sim' : 'Nenhum'}`);
             return buttons;
         }
 
@@ -1830,7 +1854,7 @@
                 
                 currentCategory = btn.dataset.category;
                 const categoryText = btn.querySelector('.category-title').textContent;
-                sectionTitle.textContent = `📋 Exibindo: ${categoryText}`;
+                sectionTitle.textContent = `Exibindo: ${categoryText}`;
                 
                 applyFilters();
                 renderOrders();
