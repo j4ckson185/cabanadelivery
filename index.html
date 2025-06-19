@@ -1272,27 +1272,47 @@
         }
 
         function applyFilters() {
+            console.log(`🚨 INICIO applyFilters`);
+            console.log(`🚨 currentCategory: ${currentCategory}`);
+            console.log(`🚨 orders.size: ${orders.size}`);
+            console.log(`🚨 searchTerm: "${searchInput.value}"`);
+            
             const searchTerm = searchInput.value.toLowerCase();
             filteredOrders.clear();
 
+            let matchCount = 0;
+
             for (const [orderId, order] of orders) {
                 let matches = true;
+
+                console.log(`🚨 Processando pedido ${order.displayId} (${orderId})`);
+                console.log(`🚨   Status: ${order.orderStatus}`);
 
                 // Filtro de busca
                 if (searchTerm) {
                     const customerName = order.customer?.name?.toLowerCase() || '';
                     const displayId = order.displayId?.toLowerCase() || '';
                     matches = matches && (customerName.includes(searchTerm) || displayId.includes(searchTerm));
+                    console.log(`🚨   Busca: ${matches} (customer: "${customerName}", displayId: "${displayId}")`);
                 }
 
                 // Filtro de categoria - sempre aplicar já que não tem mais "all"
                 const orderCategory = getOrderCategory(order.orderStatus);
                 matches = matches && orderCategory === currentCategory;
+                console.log(`🚨   Categoria: ${orderCategory} === ${currentCategory} = ${orderCategory === currentCategory}`);
+                console.log(`🚨   Matches final: ${matches}`);
 
                 if (matches) {
                     filteredOrders.set(orderId, order);
+                    matchCount++;
+                    console.log(`🚨   ✅ INCLUÍDO no filtro`);
+                } else {
+                    console.log(`🚨   ❌ EXCLUÍDO do filtro`);
                 }
             }
+
+            console.log(`🚨 FIM applyFilters - ${matchCount} pedidos filtrados`);
+            console.log(`🚨 filteredOrders.size: ${filteredOrders.size}`);
         }
 
         function getOrderCategory(status) {
@@ -1347,13 +1367,17 @@
         }
 
         function renderOrders() {
-            console.log('🎨 Renderizando pedidos...');
+            console.log('🚨 INICIO renderOrders()');
+            console.log('🚨 filteredOrders.size:', filteredOrders.size);
+            console.log('🚨 orders.size:', orders.size);
+            console.log('🚨 currentCategory:', currentCategory);
             
             // Atualizar contadores
             updateCounters();
             
             // Renderizar grid
             if (filteredOrders.size === 0) {
+                console.log('🚨 Nenhum pedido filtrado - mostrando empty state');
                 ordersGrid.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">📭</div>
@@ -1366,14 +1390,30 @@
             const ordersArray = Array.from(filteredOrders.values())
                 .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-            console.log(`🎨 Renderizando ${ordersArray.length} pedidos na categoria ${currentCategory}`);
-            ordersArray.forEach(order => {
-                console.log(`  📋 Pedido ${order.displayId}: Status ${order.orderStatus}`);
+            console.log(`🚨 Renderizando ${ordersArray.length} pedidos na categoria ${currentCategory}`);
+            ordersArray.forEach((order, index) => {
+                console.log(`🚨   ${index}: Pedido ${order.displayId} - Status: ${order.orderStatus}`);
             });
 
-            ordersGrid.innerHTML = ordersArray.map(order => createOrderCard(order)).join('');
+            console.log('🚨 Chamando createOrderCard para cada pedido...');
+            const cardsHTML = ordersArray.map((order, index) => {
+                console.log(`🚨 Criando card ${index} para pedido ${order.displayId}`);
+                try {
+                    const cardHTML = createOrderCard(order);
+                    console.log(`🚨 Card ${index} criado com sucesso (length: ${cardHTML.length})`);
+                    return cardHTML;
+                } catch (error) {
+                    console.error(`🚨 ERRO ao criar card ${index}:`, error);
+                    return `<div>ERRO: ${error.message}</div>`;
+                }
+            });
+
+            console.log(`🚨 Total de cards HTML gerados: ${cardsHTML.length}`);
+            console.log(`🚨 Inserindo HTML no ordersGrid...`);
             
-            console.log('✅ Renderização concluída - Cards criados na DOM');
+            ordersGrid.innerHTML = cardsHTML.join('');
+            
+            console.log('🚨 FIM renderOrders() - HTML inserido na DOM');
         }
 
         function updateCounters() {
@@ -1797,14 +1837,18 @@
 
         // Gerar botões de ação para os cards (versão compacta)
         function generateCardActionButtons(order) {
+            console.log(`🚨 INICIO generateCardActionButtons`);
+            console.log(`🚨 Pedido:`, order.displayId, 'ID:', order.id, 'Status:', order.orderStatus);
+            
             const status = order.orderStatus || 'PLACED';
             
-            console.log(`🔧 DEBUG: Gerando botões para card do pedido #${order.displayId} - Status: ${status}`);
+            console.log(`🚨 Status processado: ${status}`);
 
             // SEMPRE retornar algum botão para debug
             let buttons = '';
 
             if (status === 'PLACED' || status === 'PLC') {
+                console.log(`🚨 Caso PLACED/PLC`);
                 buttons = `
                     <button class="btn-small btn-confirm" onclick="event.stopPropagation(); confirmOrder('${order.id}')">
                         ✅ Confirmar
@@ -1814,6 +1858,7 @@
                     </button>
                 `;
             } else if (status === 'CONFIRMED' || status === 'CFM' || status === 'DDCR') {
+                console.log(`🚨 Caso CONFIRMED/CFM/DDCR`);
                 buttons = `
                     <button class="btn-small btn-dispatch" onclick="event.stopPropagation(); dispatchOrder('${order.id}')">
                         🚀 Despachar
@@ -1823,24 +1868,28 @@
                     </button>
                 `;
             } else if (status === 'DISPATCHED' || status === 'DSP') {
+                console.log(`🚨 Caso DISPATCHED/DSP`);
                 buttons = `
                     <button class="btn-small btn-cancel" onclick="event.stopPropagation(); cancelOrder('${order.id}')">
                         ❌ Cancelar
                     </button>
                 `;
             } else if (status === 'CONCLUDED' || status === 'CON') {
+                console.log(`🚨 Caso CONCLUDED/CON`);
                 buttons = `
                     <div class="status-final">
                         ✅ Pedido Concluído
                     </div>
                 `;
             } else if (status === 'CANCELLED' || status === 'CAN') {
+                console.log(`🚨 Caso CANCELLED/CAN`);
                 buttons = `
                     <div class="status-final">
                         ❌ Pedido Cancelado
                     </div>
                 `;
             } else {
+                console.log(`🚨 Caso DEFAULT (status não reconhecido: ${status})`);
                 // Fallback para qualquer status
                 buttons = `
                     <button class="btn-small btn-confirm" onclick="event.stopPropagation(); confirmOrder('${order.id}')">
@@ -1852,7 +1901,8 @@
                 `;
             }
 
-            console.log(`🔧 DEBUG: Botões gerados (length: ${buttons.length}):`, buttons.substring(0, 100) + '...');
+            console.log(`🚨 Botões gerados (length: ${buttons.length}):`, buttons.substring(0, 150) + '...');
+            console.log(`🚨 FIM generateCardActionButtons`);
             return buttons;
         }
 
@@ -2035,23 +2085,33 @@
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚨🚨🚨 INICIALIZAÇÃO COMEÇOU 🚨🚨🚨');
             console.log('🏖️ Cabana Delivery iniciando...');
             
             // Carregar pedidos salvos
             const hasStoredOrders = loadFromStorage();
+            console.log(`🚨 Storage carregado: ${hasStoredOrders}, pedidos: ${orders.size}`);
             if (hasStoredOrders) {
                 showToast(`${orders.size} pedidos carregados do storage`, 'info');
+                console.log('🚨 Lista de pedidos carregados:');
+                for (const [id, order] of orders) {
+                    console.log(`🚨   - ${order.displayId}: ${order.orderStatus}`);
+                }
             }
             
+            console.log('🚨 Chamando applyFilters...');
             applyFilters();
+            
+            console.log('🚨 Chamando renderOrders...');
             renderOrders();
             
             // Iniciar autenticação
             setTimeout(() => {
+                console.log('🚨 Iniciando autenticação...');
                 authenticate();
             }, 1000);
             
-            console.log('✅ Cabana Delivery inicializado');
+            console.log('🚨🚨🚨 INICIALIZAÇÃO TERMINOU 🚨🚨🚨');
         });
 
         // Cleanup
