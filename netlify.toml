@@ -5,12 +5,15 @@
   # Diretório de publicação (onde está o index.html)
   publish = "."
   
-  # Comando de build (não necessário para HTML estático)
-  command = "echo 'Build concluído'"
+  # Comando de build simplificado
+  command = "echo 'Build concluído - usando Firebase Web SDK'"
 
 [functions]
-  # Diretório das funções Netlify
+  # Diretório das funções Netlify (apenas para ifood-proxy)
   directory = "netlify/functions"
+  
+  # Configurações das funções
+  node_bundler = "esbuild"
 
 [[redirects]]
   # Redirecionamento para SPA (Single Page Application)
@@ -36,9 +39,16 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
-# Configurações de ambiente (se necessário)
+# Configurações de ambiente
 [context.production.environment]
   NODE_ENV = "production"
 
 [context.branch-deploy.environment]
   NODE_ENV = "development"
+
+# Configurações específicas para Firebase
+[[headers]]
+  for = "/motoboy.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+    X-Frame-Options = "SAMEORIGIN"
