@@ -478,6 +478,18 @@
         .toast.info {
             border-left: 4px solid #3b82f6;
         }
+
+        /* Observações */
+        .observations-text {
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 4px;
+            padding: 0.5rem;
+            color: #92400e;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            margin-top: 0.25rem;
+        }
     </style>
 </head>
 <body>
@@ -817,6 +829,20 @@
                 `${address.streetName || ''} ${address.streetNumber || ''}, ${address.neighborhood || ''}`.trim() : 
                 'Retirada no local';
 
+            // Forma de pagamento
+            const mainPayment = order.payments?.methods?.[0];
+            const paymentText = mainPayment ? getPaymentMethodLabel(mainPayment) : 'N/A';
+
+            // Observações dos itens
+            let observations = [];
+            if (order.items && order.items.length > 0) {
+                order.items.forEach(item => {
+                    if (item.observations && item.observations.trim()) {
+                        observations.push(`${item.name}: ${item.observations}`);
+                    }
+                });
+            }
+
             // Status e botões baseados no status da atribuição
             let statusText = '';
             let actionButtons = '';
@@ -865,6 +891,18 @@
                             <div class="info-label">Endereço</div>
                             <div class="info-value">${addressText}</div>
                         </div>
+                        
+                        <div class="order-info">
+                            <div class="info-label">Pagamento</div>
+                            <div class="info-value">${paymentText}</div>
+                        </div>
+                        
+                        ${observations.length > 0 ? `
+                        <div class="order-info">
+                            <div class="info-label">Observações</div>
+                            <div class="info-value observations-text">${observations.join('; ')}</div>
+                        </div>
+                        ` : ''}
                         
                         <div class="order-total">
                             <div class="total-value">${total}</div>
@@ -1133,6 +1171,33 @@
                 style: 'currency',
                 currency: 'BRL'
             }).format(value);
+        }
+
+        function getPaymentMethodLabel(payment) {
+            if (!payment) return 'N/A';
+            
+            const methodMap = {
+                'CASH': 'Dinheiro',
+                'CREDIT': 'Cartão de Crédito',
+                'DEBIT': 'Cartão de Débito',
+                'PIX': 'PIX',
+                'MEAL_VOUCHER': 'Vale Refeição',
+                'FOOD_VOUCHER': 'Vale Alimentação',
+                'GIFT_CARD': 'Gift Card',
+                'DIGITAL_WALLET': 'Carteira Digital'
+            };
+            
+            let label = methodMap[payment.method] || payment.method || 'N/A';
+            
+            if (payment.card?.brand) {
+                label += ` (${payment.card.brand})`;
+            }
+            
+            if (payment.wallet?.name) {
+                label += ` (${payment.wallet.name})`;
+            }
+            
+            return label;
         }
 
         function showError(message) {
