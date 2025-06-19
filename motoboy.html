@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cabana Delivery - Entregador</title>
+    
+    <!-- Firebase -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, collection, onSnapshot, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyBuRHTtuKgpQE_qAdMIbT9_9qbjh4cbLI8",
+            authDomain: "apiifood-e0d35.firebaseapp.com",
+            projectId: "apiifood-e0d35",
+            storageBucket: "apiifood-e0d35.firebasestorage.app",
+            messagingSenderId: "905864103175",
+            appId: "1:905864103175:web:a198383d3a66a7d2cd31a2"
+        };
+        
+        window.firebaseApp = initializeApp(firebaseConfig);
+        window.firebaseAuth = getAuth(window.firebaseApp);
+        window.firebaseDb = getFirestore(window.firebaseApp);
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.signOut = signOut;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.collection = collection;
+        window.onSnapshot = onSnapshot;
+        window.doc = doc;
+        window.updateDoc = updateDoc;
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1e293b;
+        }
+
+        /* Login Screen */
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-subtitle {
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .login-btn:hover {
+            background: #7c3aed;
+            transform: translateY(-1px);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+
+        /* Main App */
+        .app-container {
+            display: none;
+            min-height: 100vh;
+            background: #f8fafc;
+        }
+
+        .app-header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .app-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #8b5cf6;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .logout-btn {
+            padding: 0.5rem 1rem;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .stat-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Orders Grid */
+        .orders-section {
+            margin-top: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 1rem;
+        }
+
+        .orders-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .order-card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .order-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .order-card-header {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            padding: 1rem;
+        }
+
+        .order-id {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .order-time {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        .order-card-body {
+            padding: 1rem;
+        }
+
+        .order-info {
+            margin-bottom: 0.75rem;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            color: #1e293b;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .order-total {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 0.75rem;
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .total-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #059669;
+        }
+
+        .order-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+        }
+
+        .btn-accept {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-accept:hover {
+            background: #059669;
+        }
+
+        .btn-dispatch {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-dispatch:hover {
+            background: #2563eb;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #64748b;
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            background: #8b5cf6;
+            color: white;
+            padding: 1.5rem;
+            position: relative;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.25rem;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            max-height: calc(90vh - 200px);
+            overflow-y: auto;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 1rem;
+            }
+
+            .orders-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+            max-width: 400px;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            border-left: 4px solid #10b981;
+        }
+
+        .toast.error {
+            border-left: 4px solid #ef4444;
+        }
+
+        .toast.info {
+            border-left: 4px solid #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-title">🏍️ Entregador</div>
+                <div class="login-subtitle">Cabana Delivery</div>
+            </div>
+            
+            <div id="loginError" class="error-message" style="display: none;"></div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label" for="email">Email</label>
+                    <input type="email" id="email" class="form-input" placeholder="seu@email.com" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="password">Senha</label>
+                    <input type="password" id="password" class="form-input" placeholder="********" required>
+                </div>
+                
+                <button type="submit" id="loginBtn" class="login-btn">
+                    Entrar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="appScreen" class="app-container">
+        <div class="app-header">
+            <div class="header-content">
+                <div class="app-logo">
+                    🏍️ Cabana Delivery
+                </div>
+                <div class="user-info">
+                    <span class="user-name" id="userName">Entregador</span>
+                    <button class="logout-btn" onclick="logout()">Sair</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Statistics -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-label">Hoje</div>
+                    <div class="stat-value" id="todayCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-label">Ontem</div>
+                    <div class="stat-value" id="yesterdayCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📅</div>
+                    <div class="stat-label">7 Dias</div>
+                    <div class="stat-value" id="week7Count">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🗓️</div>
+                    <div class="stat-label">30 Dias</div>
+                    <div class="stat-value" id="month30Count">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🔥</div>
+                    <div class="stat-label">Ativos</div>
+                    <div class="stat-value" id="activeCount">0</div>
+                </div>
+            </div>
+
+            <!-- Active Orders -->
+            <div class="orders-section">
+                <h2 class="section-title">📦 Seus Pedidos Ativos</h2>
+                <div class="orders-grid" id="ordersGrid">
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <p>Nenhum pedido ativo no momento</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div id="orderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Detalhes do Pedido</div>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // Estado da aplicação
+        let currentUser = null;
+        let userDeliveryId = null;
+        let assignments = new Map();
+        let unsubscribeAssignments = null;
+
+        // Configurações da API do iFood (mesmas do PDV)
+        const API_CONFIG = {
+            merchantId: '2733980',
+            merchantUUID: 'cbf5929d-2eb9-49d0-aaca-ea9dcfdb387a',
+            clientId: '0ab88bb0-0d63-4010-a0b6-a0bc25eea198',
+            clientSecret: 'hzuj6prosxn02zbm8v34lyob00rb1klxkpivb1wuzxyp2fd2ivj95t697wonsyb7vtiesrltuc4f3h8kevdby77vn3yapx7s3yv',
+            baseUrl: 'https://merchant-api.ifood.com.br'
+        };
+
+        let accessToken = null;
+
+        // Mapeamento de emails para IDs
+        const EMAIL_TO_DELIVERY_ID = {
+            'jackson_division@hotmail.com': 'jackson'
+        };
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeAuth();
+            setupLoginForm();
+        });
+
+        // Configurar autenticação
+        function initializeAuth() {
+            window.onAuthStateChanged(window.firebaseAuth, (user) => {
+                if (user) {
+                    console.log('👤 Usuário logado:', user.email);
+                    currentUser = user;
+                    userDeliveryId = EMAIL_TO_DELIVERY_ID[user.email];
+                    
+                    if (userDeliveryId) {
+                        showApp();
+                        setupRealTimeListeners();
+                    } else {
+                        showError('Usuário não autorizado');
+                        logout();
+                    }
+                } else {
+                    console.log('👤 Usuário não logado');
+                    showLogin();
+                }
+            });
+        }
+
+        // Configurar formulário de login
+        function setupLoginForm() {
+            const loginForm = document.getElementById('loginForm');
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                
+                const loginBtn = document.getElementById('loginBtn');
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Entrando...';
+                
+                try {
+                    await window.signInWithEmailAndPassword(window.firebaseAuth, email, password);
+                } catch (error) {
+                    console.error('Erro no login:', error);
+                    showError(getErrorMessage(error.code));
+                } finally {
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Entrar';
+                }
+            });
+        }
+
+        // Mostrar tela de login
+        function showLogin() {
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('appScreen').style.display = 'none';
+        }
+
+        // Mostrar aplicação
+        function showApp() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appScreen').style.display = 'block';
+            
+            // Atualizar nome do usuário
+            const userName = currentUser.email.split('@')[0];
+            document.getElementById('userName').textContent = userName;
+            
+            // Autenticar com iFood
+            authenticateIfood();
+        }
+
+        // Autenticar com iFood
+        async function authenticateIfood() {
+            try {
+                const formData = new URLSearchParams();
+                formData.append('grantType', 'client_credentials');
+                formData.append('clientId', API_CONFIG.clientId);
+                formData.append('clientSecret', API_CONFIG.clientSecret);
+
+                const response = await fetch('/.netlify/functions/ifood-proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: '/authentication/v1.0/oauth/token',
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: formData.toString(),
+                        isAuth: true
+                    })
+                });
+
+                const data = await response.json();
+                if (data.accessToken) {
+                    accessToken = data.accessToken;
+                    console.log('✅ Autenticado com iFood');
+                }
+            } catch (error) {
+                console.error('❌ Erro na autenticação iFood:', error);
+            }
+        }
+
+        // Configurar listeners em tempo real
+        function setupRealTimeListeners() {
+            // Limpar listener anterior se existir
+            if (unsubscribeAssignments) {
+                unsubscribeAssignments();
+            }
+
+            // Listener para atribuições do entregador
+            const assignmentsRef = window.collection(window.firebaseDb, 'deliveryAssignments');
+            unsubscribeAssignments = window.onSnapshot(assignmentsRef, (snapshot) => {
+                assignments.clear();
+                
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.deliveryId === userDeliveryId) {
+                        assignments.set(doc.id, {
+                            id: doc.id,
+                            ...data
+                        });
+                    }
+                });
+                
+                console.log(`📦 ${assignments.size} atribuições carregadas`);
+                updateStats();
+                renderOrders();
+            });
+        }
+
+        // Atualizar estatísticas
+        function updateStats() {
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+            const week7Ago = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const month30Ago = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+            let todayCount = 0;
+            let yesterdayCount = 0;
+            let week7Count = 0;
+            let month30Count = 0;
+            let activeCount = 0;
+
+            assignments.forEach(assignment => {
+                const createdAt = assignment.assignedAt ? new Date(assignment.assignedAt) : new Date();
+                const orderStatus = assignment.order?.orderStatus;
+                
+                // Contar apenas pedidos concluídos para relatórios
+                if (orderStatus === 'CONCLUDED' || orderStatus === 'CON') {
+                    if (createdAt >= today) todayCount++;
+                    if (createdAt >= yesterday && createdAt < today) yesterdayCount++;
+                    if (createdAt >= week7Ago) week7Count++;
+                    if (createdAt >= month30Ago) month30Count++;
+                }
+                
+                // Contar pedidos ativos (aceitos pelo entregador)
+                if (assignment.status === 'accepted') {
+                    activeCount++;
+                }
+            });
+
+            document.getElementById('todayCount').textContent = todayCount;
+            document.getElementById('yesterdayCount').textContent = yesterdayCount;
+            document.getElementById('week7Count').textContent = week7Count;
+            document.getElementById('month30Count').textContent = month30Count;
+            document.getElementById('activeCount').textContent = activeCount;
+        }
+
+        // Renderizar pedidos
+        function renderOrders() {
+            const ordersGrid = document.getElementById('ordersGrid');
+            
+            // Filtrar apenas pedidos enviados ou aceitos
+            const activeAssignments = Array.from(assignments.values()).filter(assignment => 
+                assignment.status === 'sent' || assignment.status === 'accepted'
+            );
+
+            if (activeAssignments.length === 0) {
+                ordersGrid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <p>Nenhum pedido ativo no momento</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const cardsHTML = activeAssignments.map(assignment => createOrderCard(assignment)).join('');
+            ordersGrid.innerHTML = cardsHTML;
+        }
+
+        // Criar card do pedido
+        function createOrderCard(assignment) {
+            const order = assignment.order;
+            const createdAt = new Date(order.createdAt);
+            const timeString = createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const dateString = createdAt.toLocaleDateString('pt-BR');
+
+            const customerName = order.customer?.name || 'Cliente';
+            const total = formatCurrency(order.total?.orderAmount || 0);
+            
+            // Endereço
+            const address = order.delivery?.deliveryAddress;
+            const addressText = address ? 
+                `${address.streetName || ''} ${address.streetNumber || ''}, ${address.neighborhood || ''}`.trim() : 
+                'Retirada no local';
+
+            // Botões baseados no status
+            let actionButtons = '';
+            if (assignment.status === 'sent') {
+                actionButtons = `
+                    <button class="btn btn-accept" onclick="acceptOrder('${assignment.id}')">
+                        ✅ Aceitar Pedido
+                    </button>
+                `;
+            } else if (assignment.status === 'accepted') {
+                actionButtons = `
+                    <button class="btn btn-dispatch" onclick="dispatchOrder('${assignment.id}')">
+                        🚀 Despachar Pedido
+                    </button>
+                `;
+            }
+
+            return `
+                <div class="order-card" onclick="openOrderModal('${assignment.id}')">
+                    <div class="order-card-header">
+                        <div class="order-id">#${order.displayId}</div>
+                        <div class="order-time">${timeString} • ${dateString}</div>
+                    </div>
+                    
+                    <div class="order-card-body">
+                        <div class="order-info">
+                            <div class="info-label">Cliente</div>
+                            <div class="info-value">${customerName}</div>
+                        </div>
+                        
+                        <div class="order-info">
+                            <div class="info-label">Endereço</div>
+                            <div class="info-value">${addressText}</div>
+                        </div>
+                        
+                        <div class="order-total">
+                            <div class="total-value">${total}</div>
+                        </div>
+                        
+                        <div class="order-actions" onclick="event.stopPropagation()">
+                            ${actionButtons}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Aceitar pedido
+        async function acceptOrder(assignmentId) {
+            try {
+                console.log(`✅ Aceitando pedido: ${assignmentId}`);
+                
+                // Importar funções do Firebase
+                const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                
+                // Atualizar status no Firebase
+                const docRef = doc(window.firebaseDb, 'deliveryAssignments', assignmentId);
+                await updateDoc(docRef, {
+                    status: 'accepted',
+                    acceptedAt: new Date().toISOString(),
+                    updatedAt: serverTimestamp()
+                });
+                
+                showToast('✅ Pedido aceito com sucesso!', 'success');
+                
+            } catch (error) {
+                console.error('❌ Erro ao aceitar pedido:', error);
+                showToast('Erro ao aceitar pedido', 'error');
+            }
+        }
+
+        // Despachar pedido
+        async function dispatchOrder(assignmentId) {
+            try {
+                console.log(`🚀 Despachando pedido: ${assignmentId}`);
+                
+                const assignment = assignments.get(assignmentId);
+                if (!assignment || !assignment.order) {
+                    throw new Error('Pedido não encontrado');
+                }
+                
+                // Despachar via API do iFood
+                await fetch('/.netlify/functions/ifood-proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: `/order/v1.0/orders/${assignment.order.id}/dispatch`,
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                    })
+                });
+                
+                // Importar funções do Firebase
+                const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                
+                // Atualizar status no Firebase
+                const docRef = doc(window.firebaseDb, 'deliveryAssignments', assignmentId);
+                await updateDoc(docRef, {
+                    status: 'dispatched',
+                    dispatchedAt: new Date().toISOString(),
+                    updatedAt: serverTimestamp()
+                });
+                
+                showToast('🚀 Pedido despachado com sucesso!', 'success');
+                
+            } catch (error) {
+                console.error('❌ Erro ao despachar pedido:', error);
+                showToast('Erro ao despachar pedido', 'error');
+            }
+        }
+
+        // Abrir modal de detalhes
+        function openOrderModal(assignmentId) {
+            const assignment = assignments.get(assignmentId);
+            if (!assignment) return;
+
+            const order = assignment.order;
+            const modal = document.getElementById('orderModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+
+            modalTitle.textContent = `Pedido #${order.displayId}`;
+            modalBody.innerHTML = generateOrderDetails(order);
+            modal.style.display = 'block';
+        }
+
+        // Fechar modal
+        function closeModal() {
+            document.getElementById('orderModal').style.display = 'none';
+        }
+
+        // Gerar detalhes do pedido (similar ao PDV)
+        function generateOrderDetails(order) {
+            let html = `
+                <div style="display: grid; gap: 1rem;">
+                    <div>
+                        <h4>👤 Cliente</h4>
+                        <p><strong>Nome:</strong> ${order.customer?.name || 'N/A'}</p>
+                        ${order.customer?.phone?.number ? `<p><strong>Telefone:</strong> ${order.customer.phone.number}</p>` : ''}
+                    </div>
+            `;
+
+            // Endereço de entrega
+            if (order.delivery?.deliveryAddress) {
+                const addr = order.delivery.deliveryAddress;
+                html += `
+                    <div>
+                        <h4>📍 Endereço de Entrega</h4>
+                        <p><strong>Endereço:</strong> ${addr.formattedAddress || `${addr.streetName || ''} ${addr.streetNumber || ''}`}</p>
+                        ${addr.complement ? `<p><strong>Complemento:</strong> ${addr.complement}</p>` : ''}
+                        <p><strong>Bairro:</strong> ${addr.neighborhood || 'N/A'}</p>
+                        <p><strong>Cidade:</strong> ${addr.city || 'N/A'} - ${addr.state || 'N/A'}</p>
+                        ${addr.reference ? `<p><strong>Referência:</strong> ${addr.reference}</p>` : ''}
+                        ${order.delivery.observations ? `<p><strong>Observações:</strong> ${order.delivery.observations}</p>` : ''}
+                    </div>
+                `;
+            }
+
+            // Itens do pedido
+            if (order.items && order.items.length > 0) {
+                html += `
+                    <div>
+                        <h4>🍽️ Itens do Pedido</h4>
+                `;
+
+                order.items.forEach(item => {
+                    html += `
+                        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <strong>${item.quantity}x ${item.name}</strong>
+                                <strong>${formatCurrency(item.totalPrice || 0)}</strong>
+                            </div>
+                            ${item.observations ? `<p style="background: #fef3c7; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem;"><strong>Observações:</strong> ${item.observations}</p>` : ''}
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+            }
+
+            // Total
+            html += `
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 1rem; text-align: center;">
+                    <div style="font-size: 0.875rem; color: #166534; margin-bottom: 0.5rem;">TOTAL DO PEDIDO</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #059669;">${formatCurrency(order.total?.orderAmount || 0)}</div>
+                </div>
+            `;
+
+            html += `</div>`;
+            return html;
+        }
+
+        // Logout
+        async function logout() {
+            try {
+                await window.signOut(window.firebaseAuth);
+            } catch (error) {
+                console.error('Erro no logout:', error);
+            }
+        }
+
+        // Utilitários
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value);
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function getErrorMessage(errorCode) {
+            const messages = {
+                'auth/invalid-email': 'Email inválido',
+                'auth/user-disabled': 'Usuário desabilitado',
+                'auth/user-not-found': 'Usuário não encontrado',
+                'auth/wrong-password': 'Senha incorreta',
+                'auth/invalid-credential': 'Credenciais inválidas'
+            };
+            return messages[errorCode] || 'Erro no login';
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 5000);
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // Tornar funções globais
+        window.acceptOrder = acceptOrder;
+        window.dispatchOrder = dispatchOrder;
+        window.openOrderModal = openOrderModal;
+        window.closeModal = closeModal;
+        window.logout = logout;
+    </script>
+</body>
+</html>
