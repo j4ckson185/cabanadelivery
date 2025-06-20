@@ -1095,9 +1095,20 @@
         function addOrderMarkerToMap(assignment) {
             const order = assignment.order;
             
-            // Verificar se é entrega e tem endereço
-            if (!order.delivery?.deliveryAddress || order.orderType !== 'DELIVERY') {
-                console.log(`📍 Pedido ${order.displayId} não é entrega ou sem endereço`);
+            console.log(`🔍 DEBUG Pedido ${order.displayId}:`, {
+                orderType: order.orderType,
+                hasDelivery: !!order.delivery,
+                hasDeliveryAddress: !!order.delivery?.deliveryAddress,
+                deliveryData: order.delivery,
+                orderKeys: Object.keys(order)
+            });
+            
+            // Verificar se é entrega e tem endereço - aceitar tanto DELIVERY quanto undefined (padrão é entrega)
+            const isDelivery = !order.orderType || order.orderType === 'DELIVERY';
+            const hasAddress = order.delivery && order.delivery.deliveryAddress;
+            
+            if (!isDelivery || !hasAddress) {
+                console.log(`📍 Pedido ${order.displayId} - isDelivery: ${isDelivery}, hasAddress: ${hasAddress}`);
                 return;
             }
             
