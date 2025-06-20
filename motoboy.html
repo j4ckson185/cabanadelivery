@@ -163,15 +163,16 @@
             max-width: 1200px;
             margin: 0 auto;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
+            padding: 0 1rem;
         }
 
         .app-logo {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            font-size: 1.5rem;
+            gap: 0.5rem;
+            font-size: 1.25rem;
             font-weight: 700;
             color: #8b5cf6;
         }
@@ -228,6 +229,8 @@
             border-radius: 12px;
             padding: 0.5rem;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 50; /* Sempre acima do mapa */
         }
 
         .nav-tab {
@@ -503,11 +506,11 @@
             box-shadow: none;
             border: none;
             position: fixed;
-            top: 80px; /* Altura do cabeçalho */
+            top: 140px; /* Altura do cabeçalho + abas */
             left: 0;
             right: 0;
             bottom: 0;
-            z-index: 50;
+            z-index: 40; /* Menor que as abas */
         }
 
         .map-header {
@@ -523,7 +526,7 @@
 
         #deliveryMap {
             width: 100%;
-            height: calc(100vh - 140px); /* Tela inteira menos cabeçalho e header do mapa */
+            height: calc(100vh - 200px); /* Tela inteira menos cabeçalho, abas e header do mapa */
         }
 
         .map-legend {
@@ -733,11 +736,11 @@
             }
 
             .map-container {
-                top: 70px; /* Cabeçalho menor no mobile */
+                top: 130px; /* Cabeçalho + abas no mobile */
             }
 
             #deliveryMap {
-                height: calc(100vh - 130px);
+                height: calc(100vh - 190px);
             }
 
             .map-legend {
@@ -759,20 +762,17 @@
 
         @media (max-width: 480px) {
             .header-content {
-                padding: 0 1rem;
+                padding: 0 0.5rem;
             }
 
-            .user-info {
-                gap: 0.5rem;
+            .app-logo {
+                font-size: 1rem;
             }
 
-            .user-name {
-                font-size: 0.875rem;
-            }
-
-            .logout-btn {
-                padding: 0.5rem 0.75rem;
-                font-size: 0.75rem;
+            .header-menu-btn {
+                font-size: 1.25rem;
+                padding: 0.25rem;
+                margin-right: 0.5rem;
             }
 
             .nav-tab {
@@ -781,11 +781,11 @@
             }
 
             .map-container {
-                top: 65px;
+                top: 120px;
             }
 
             #deliveryMap {
-                height: calc(100vh - 125px);
+                height: calc(100vh - 180px);
             }
         }
     </style>
@@ -823,17 +823,11 @@
     <div id="appScreen" class="app-container">
         <div class="app-header">
             <div class="header-content">
-                <div style="display: flex; align-items: center;">
-                    <button class="header-menu-btn" onclick="openReportsModal()">
-                        ☰
-                    </button>
-                    <div class="app-logo">
-                        🏍️ Cabana Delivery
-                    </div>
-                </div>
-                <div class="user-info">
-                    <span class="user-name" id="userName">Entregador</span>
-                    <button class="logout-btn" onclick="logout()">Sair</button>
+                <button class="header-menu-btn" onclick="openReportsModal()">
+                    ☰
+                </button>
+                <div class="app-logo">
+                    🏍️ Cabana Delivery
                 </div>
             </div>
         </div>
@@ -905,22 +899,37 @@
     <div id="reportsModal" class="reports-modal">
         <div class="reports-content">
             <div class="reports-header">
-                <div class="reports-title">📊 Relatórios</div>
+                <div class="reports-title">📊 Menu</div>
                 <button class="close-btn" onclick="closeReportsModal()">×</button>
             </div>
             <div class="reports-body">
-                <div class="date-group">
-                    <label class="date-label" for="reportDate">Selecionar Data:</label>
-                    <input type="date" id="reportDate" class="date-input">
+                <!-- User Info -->
+                <div style="background: #f8fafc; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; text-align: center;">
+                    <div style="font-size: 1.125rem; font-weight: 600; color: #1e293b; margin-bottom: 0.5rem;">
+                        👤 <span id="userNameModal">Entregador</span>
+                    </div>
+                    <button class="btn-filter" onclick="logout()" style="background: #ef4444; margin-top: 0.5rem;">
+                        🚪 Sair
+                    </button>
                 </div>
-                
-                <button class="btn-filter" onclick="generateReport()">
-                    🔍 Gerar Relatório
-                </button>
-                
-                <div id="reportResult" class="report-result" style="display: none;">
-                    <div class="result-label">Pedidos Concluídos</div>
-                    <div class="result-value" id="reportCount">0</div>
+
+                <!-- Reports Section -->
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+                    <h4 style="margin-bottom: 1rem; color: #1e293b;">📊 Relatórios</h4>
+                    
+                    <div class="date-group">
+                        <label class="date-label" for="reportDate">Selecionar Data:</label>
+                        <input type="date" id="reportDate" class="date-input">
+                    </div>
+                    
+                    <button class="btn-filter" onclick="generateReport()">
+                        🔍 Gerar Relatório
+                    </button>
+                    
+                    <div id="reportResult" class="report-result" style="display: none;">
+                        <div class="result-label">Pedidos Concluídos</div>
+                        <div class="result-value" id="reportCount">0</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1036,9 +1045,9 @@
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('appScreen').style.display = 'block';
             
-            // Atualizar nome do usuário
+            // Atualizar nome do usuário no modal
             const userName = currentUser.email.split('@')[0];
-            document.getElementById('userName').textContent = userName;
+            document.getElementById('userNameModal').textContent = userName;
             
             // Autenticar com iFood
             authenticateIfood();
@@ -1803,6 +1812,15 @@
             
             // Mapear o método
             label = methodMap[method] || method || 'N/A';
+            
+            // Adicionar informação de ONLINE/OFFLINE baseado no campo type
+            if (payment.type) {
+                if (payment.type === 'ONLINE') {
+                    label += ' 🟢 (Já Pago)';
+                } else if (payment.type === 'OFFLINE') {
+                    label += ' 🔴 (Cobrar na Entrega)';
+                }
+            }
             
             // Adicionar informações de cartão se disponível
             if (payment.card?.brand && payment.card.brand !== 'PIX') {
