@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cabana Delivery - Entregador</title>
     
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
     <!-- Firebase -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
@@ -198,6 +201,52 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 2rem;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            background: white;
+            border-radius: 12px;
+            padding: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .nav-tab:hover {
+            background: #f1f5f9;
+        }
+
+        .nav-tab.active {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         /* Stats Cards */
@@ -430,19 +479,70 @@
             overflow-y: auto;
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .main-content {
-                padding: 1rem;
-            }
+        /* Map Section */
+        .map-container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            height: 70vh;
+            min-height: 500px;
+            position: relative;
+        }
 
-            .orders-grid {
-                grid-template-columns: 1fr;
-            }
+        .map-header {
+            background: #8b5cf6;
+            color: white;
+            padding: 1rem;
+            font-weight: 600;
+            font-size: 1.125rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
 
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
+        #deliveryMap {
+            width: 100%;
+            height: calc(100% - 60px);
+            min-height: 440px;
+        }
+
+        .map-legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            font-size: 0.875rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
+            margin-right: 0.5rem;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: #1e293b;
         }
 
         /* Toast */
@@ -490,6 +590,83 @@
             line-height: 1.4;
             margin-top: 0.25rem;
         }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 1rem;
+            }
+
+            .orders-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .nav-tabs {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .nav-tab {
+                padding: 1rem;
+            }
+
+            .map-container {
+                height: 60vh;
+                min-height: 400px;
+            }
+
+            #deliveryMap {
+                min-height: 340px;
+            }
+
+            .map-legend {
+                bottom: 10px;
+                right: 10px;
+                padding: 0.75rem;
+                font-size: 0.75rem;
+            }
+
+            .modal-content {
+                width: 95%;
+                max-height: 95vh;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-content {
+                padding: 0 1rem;
+            }
+
+            .user-info {
+                gap: 0.5rem;
+            }
+
+            .user-name {
+                font-size: 0.875rem;
+            }
+
+            .logout-btn {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.75rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .map-container {
+                height: 50vh;
+                min-height: 300px;
+            }
+
+            #deliveryMap {
+                min-height: 240px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -536,42 +713,80 @@
         </div>
 
         <div class="main-content">
-            <!-- Statistics -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon">📊</div>
-                    <div class="stat-label">Hoje</div>
-                    <div class="stat-value" id="todayCount">0</div>
+            <!-- Navigation Tabs -->
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="switchTab('pedidos')">
+                    📦 Pedidos
+                </button>
+                <button class="nav-tab" onclick="switchTab('mapa')">
+                    🗺️ Mapa
+                </button>
+            </div>
+
+            <!-- Pedidos Tab -->
+            <div id="pedidosTab" class="tab-content active">
+                <!-- Statistics -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-label">Hoje</div>
+                        <div class="stat-value" id="todayCount">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📈</div>
+                        <div class="stat-label">Ontem</div>
+                        <div class="stat-value" id="yesterdayCount">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-label">7 Dias</div>
+                        <div class="stat-value" id="week7Count">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🗓️</div>
+                        <div class="stat-label">30 Dias</div>
+                        <div class="stat-value" id="month30Count">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔥</div>
+                        <div class="stat-label">Ativos</div>
+                        <div class="stat-value" id="activeCount">0</div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon">📈</div>
-                    <div class="stat-label">Ontem</div>
-                    <div class="stat-value" id="yesterdayCount">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">📅</div>
-                    <div class="stat-label">7 Dias</div>
-                    <div class="stat-value" id="week7Count">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">🗓️</div>
-                    <div class="stat-label">30 Dias</div>
-                    <div class="stat-value" id="month30Count">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">🔥</div>
-                    <div class="stat-label">Ativos</div>
-                    <div class="stat-value" id="activeCount">0</div>
+
+                <!-- Active Orders -->
+                <div class="orders-section">
+                    <h2 class="section-title">📦 Seus Pedidos Ativos</h2>
+                    <div class="orders-grid" id="ordersGrid">
+                        <div class="empty-state">
+                            <div class="empty-icon">📭</div>
+                            <p>Nenhum pedido ativo no momento</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Active Orders -->
-            <div class="orders-section">
-                <h2 class="section-title">📦 Seus Pedidos Ativos</h2>
-                <div class="orders-grid" id="ordersGrid">
-                    <div class="empty-state">
-                        <div class="empty-icon">📭</div>
-                        <p>Nenhum pedido ativo no momento</p>
+            <!-- Mapa Tab -->
+            <div id="mapaTab" class="tab-content">
+                <div class="map-container">
+                    <div class="map-header">
+                        🗺️ Mapa de Entregas
+                    </div>
+                    <div id="deliveryMap"></div>
+                    <div class="map-legend">
+                        <div class="legend-title">Legenda</div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #eab308;"></div>
+                            <span>Aceito</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #06b6d4;"></div>
+                            <span>Despachado</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ef4444;"></div>
+                            <span>Loja</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -592,12 +807,27 @@
     <!-- Toast -->
     <div id="toast" class="toast"></div>
 
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script>
         // Estado da aplicação
         let currentUser = null;
         let userDeliveryId = null;
         let assignments = new Map();
         let unsubscribeAssignments = null;
+        let currentTab = 'pedidos';
+
+        // Variáveis do mapa
+        let deliveryMap = null;
+        let mapMarkers = new Map();
+
+        // Coordenadas da loja
+        const STORE_LOCATION = {
+            lat: -5.748,
+            lng: -35.256,
+            address: 'Rua Serra do Mar, 1216, Potengi'
+        };
 
         // Configurações da API do iFood (mesmas do PDV)
         const API_CONFIG = {
@@ -747,8 +977,220 @@
                 console.log(`📦 ${assignments.size} atribuições carregadas`);
                 updateStats();
                 renderOrders();
+                
+                // Atualizar mapa se estiver na aba do mapa
+                if (currentTab === 'mapa' && deliveryMap) {
+                    loadMapOrders();
+                }
             });
         }
+
+        // Trocar abas
+        function switchTab(tabName) {
+            // Atualizar botões de navegação
+            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Esconder todas as abas
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            
+            // Mostrar aba selecionada
+            if (tabName === 'pedidos') {
+                document.getElementById('pedidosTab').classList.add('active');
+                currentTab = 'pedidos';
+            } else if (tabName === 'mapa') {
+                document.getElementById('mapaTab').classList.add('active');
+                currentTab = 'mapa';
+                
+                // Inicializar mapa quando trocar para aba do mapa
+                setTimeout(() => {
+                    initializeMap();
+                    loadMapOrders();
+                }, 100);
+            }
+        }
+
+        // ============ FUNCIONALIDADES DO MAPA ============
+
+        // Inicializar mapa
+        function initializeMap() {
+            if (deliveryMap) {
+                return; // Mapa já inicializado
+            }
+            
+            console.log('🗺️ Inicializando mapa do entregador...');
+            
+            // Criar mapa centrado na loja
+            deliveryMap = L.map('deliveryMap').setView([STORE_LOCATION.lat, STORE_LOCATION.lng], 14);
+            
+            // Adicionar tiles do OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18,
+            }).addTo(deliveryMap);
+            
+            // Adicionar marcador da loja
+            const storeIcon = L.divIcon({
+                html: `<div style="
+                    background: #ef4444; 
+                    color: white; 
+                    border-radius: 50%; 
+                    width: 30px; 
+                    height: 30px; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    font-size: 16px;
+                    border: 3px solid white;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                ">🏪</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+            
+            L.marker([STORE_LOCATION.lat, STORE_LOCATION.lng], { icon: storeIcon })
+                .bindPopup(`<b>🏪 Cabana Delivery</b><br>${STORE_LOCATION.address}`)
+                .addTo(deliveryMap);
+            
+            // Definir limites do mapa (6km ao redor da loja)
+            const bounds = L.latLngBounds(
+                [STORE_LOCATION.lat - 0.054, STORE_LOCATION.lng - 0.054], // ~6km
+                [STORE_LOCATION.lat + 0.054, STORE_LOCATION.lng + 0.054]  // ~6km
+            );
+            deliveryMap.setMaxBounds(bounds);
+            deliveryMap.setMinZoom(12);
+            deliveryMap.setMaxZoom(18);
+            
+            console.log('✅ Mapa inicializado com sucesso');
+        }
+
+        // Carregar pedidos no mapa
+        function loadMapOrders() {
+            if (!deliveryMap) {
+                console.log('🗺️ Mapa não inicializado ainda');
+                return;
+            }
+            
+            console.log('🗺️ Carregando pedidos no mapa...');
+            
+            // Limpar marcadores existentes (exceto loja)
+            mapMarkers.forEach(marker => {
+                deliveryMap.removeLayer(marker);
+            });
+            mapMarkers.clear();
+            
+            // Filtrar apenas pedidos aceitos ou despachados pelo entregador
+            const mapOrders = Array.from(assignments.values()).filter(assignment => 
+                assignment.status === 'accepted' || assignment.status === 'dispatched'
+            );
+            
+            console.log(`🗺️ ${mapOrders.length} pedidos para exibir no mapa`);
+            
+            mapOrders.forEach(assignment => {
+                addOrderMarkerToMap(assignment);
+            });
+        }
+
+        // Adicionar marcador do pedido no mapa
+        function addOrderMarkerToMap(assignment) {
+            const order = assignment.order;
+            
+            // Verificar se é entrega e tem endereço
+            if (!order.delivery?.deliveryAddress || order.orderType !== 'DELIVERY') {
+                console.log(`📍 Pedido ${order.displayId} não é entrega ou sem endereço`);
+                return;
+            }
+            
+            const address = order.delivery.deliveryAddress;
+            if (!address.coordinates?.latitude || !address.coordinates?.longitude) {
+                console.warn(`📍 Pedido ${order.displayId} sem coordenadas válidas`);
+                return;
+            }
+            
+            const lat = address.coordinates.latitude;
+            const lng = address.coordinates.longitude;
+            
+            // Verificar se está dentro dos limites de 6km
+            const distance = getDistance(STORE_LOCATION.lat, STORE_LOCATION.lng, lat, lng);
+            if (distance > 6) {
+                console.warn(`📍 Pedido ${order.displayId} está muito longe (${distance.toFixed(1)}km)`);
+                return;
+            }
+            
+            const color = getMarkerColor(assignment.status);
+            
+            // Marcador quadrado com número do pedido
+            const markerIcon = L.divIcon({
+                html: `<div style="
+                    background: ${color}; 
+                    color: white; 
+                    width: 35px; 
+                    height: 35px; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    font-size: 12px;
+                    font-weight: bold;
+                    border: 3px solid white;
+                    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+                    border-radius: 4px;
+                ">${order.displayId}</div>`,
+                iconSize: [35, 35],
+                iconAnchor: [17.5, 17.5]
+            });
+            
+            const customerName = order.customer?.name || 'Cliente';
+            const orderTotal = formatCurrency(order.total?.orderAmount || 0);
+            const statusLabel = assignment.status === 'accepted' ? 'Aceito' : 'Despachado';
+            
+            const popupContent = `
+                <div style="min-width: 200px;">
+                    <h4>📦 Pedido #${order.displayId}</h4>
+                    <p><strong>👤 Cliente:</strong> ${customerName}</p>
+                    <p><strong>💰 Total:</strong> ${orderTotal}</p>
+                    <p><strong>📍 Status:</strong> ${statusLabel}</p>
+                    <p><strong>📍 Endereço:</strong><br>
+                    ${address.formattedAddress || `${address.streetName || ''} ${address.streetNumber || ''}`}</p>
+                    <button onclick="openOrderModal('${assignment.id}')" 
+                            style="margin-top: 10px; padding: 8px 16px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Ver Detalhes
+                    </button>
+                </div>
+            `;
+            
+            const marker = L.marker([lat, lng], { icon: markerIcon })
+                .bindPopup(popupContent)
+                .addTo(deliveryMap);
+            
+            mapMarkers.set(assignment.id, marker);
+            
+            console.log(`📍 Marcador adicionado para pedido ${order.displayId} (${statusLabel})`);
+        }
+
+        // Obter cor do marcador baseado no status
+        function getMarkerColor(status) {
+            if (status === 'accepted') return '#eab308'; // Amarelo - aceito
+            if (status === 'dispatched') return '#06b6d4'; // Azul piscina - despachado
+            return '#6b7280'; // Cinza como fallback
+        }
+
+        // Calcular distância entre dois pontos (em km)
+        function getDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Raio da Terra em km
+            const dLat = toRad(lat2 - lat1);
+            const dLng = toRad(lng2 - lng1);
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                    Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+        
+        function toRad(degrees) {
+            return degrees * (Math.PI / 180);
+        }
+
+        // ============ FIM FUNCIONALIDADES DO MAPA ============
 
         // Atualizar estatísticas
         function updateStats() {
@@ -829,16 +1271,16 @@
                 `${address.streetName || ''} ${address.streetNumber || ''}, ${address.neighborhood || ''}`.trim() : 
                 'Retirada no local';
 
-// Forma de pagamento
-const mainPayment = order.payments?.methods?.[0];
-const paymentText = mainPayment ? getPaymentMethodLabel(mainPayment) : 'N/A';
+            // Forma de pagamento
+            const mainPayment = order.payments?.methods?.[0];
+            const paymentText = mainPayment ? getPaymentMethodLabel(mainPayment) : 'N/A';
 
-console.log('💳 DEBUG Payment:', {
-    hasPayments: !!order.payments,
-    methodsLength: order.payments?.methods?.length || 0,
-    mainPayment: mainPayment,
-    paymentText: paymentText
-});
+            console.log('💳 DEBUG Payment:', {
+                hasPayments: !!order.payments,
+                methodsLength: order.payments?.methods?.length || 0,
+                mainPayment: mainPayment,
+                paymentText: paymentText
+            });
 
             // Observações dos itens
             let observations = [];
@@ -1016,6 +1458,7 @@ console.log('💳 DEBUG Payment:', {
                 showToast('Erro ao finalizar pedido', 'error');
             }
         }
+
         // Confirmar código de entrega
         async function confirmDeliveryCode(assignmentId) {
             const assignment = assignments.get(assignmentId);
@@ -1180,7 +1623,7 @@ console.log('💳 DEBUG Payment:', {
             }).format(value);
         }
 
-function getPaymentMethodLabel(payment) {
+        function getPaymentMethodLabel(payment) {
             if (!payment) return 'N/A';
             
             // Mapear métodos de pagamento baseado na estrutura da API do iFood
@@ -1220,7 +1663,7 @@ function getPaymentMethodLabel(payment) {
             if (payment.wallet?.name) {
                 const walletMap = {
                     'APPLE_PAY': 'Apple Pay',
-                    'GOOGLE_PAY': 'Google Pay', 
+                    'GOOGLE_PAY': 'Google Pay',
                     'SAMSUNG_PAY': 'Samsung Pay'
                 };
                 const walletName = walletMap[payment.wallet.name] || payment.wallet.name;
@@ -1274,7 +1717,15 @@ function getPaymentMethodLabel(payment) {
             }
         });
 
+        // Fechar modal clicando fora
+        document.getElementById('orderModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('orderModal')) {
+                closeModal();
+            }
+        });
+
         // Tornar funções globais
+        window.switchTab = switchTab;
         window.acceptOrder = acceptOrder;
         window.dispatchOrder = dispatchOrder;
         window.confirmDeliveryCode = confirmDeliveryCode;
