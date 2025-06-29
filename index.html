@@ -3211,44 +3211,68 @@ async function setupDeliveryLocationsListener() {
         unsubscribeLocations = onSnapshot(locationsRef, (snapshot) => {
             console.log(`🏍️ Atualizações de localização: ${snapshot.size} motoboys`);
             
-            snapshot.docChanges().forEach((change) => {
-                const data = change.doc.data();
-                const deliveryId = change.doc.id;
-                
-                if (change.type === 'added' || change.type === 'modified') {
-                    // Verificar se localização é recente (últimos 30 segundos)
-                    const locationTime = new Date(data.timestamp);
-                    const now = new Date();
-                    const ageInSeconds = (now - locationTime) / 1000;
-                    
-                    if (ageInSeconds <= 30 && data.isActive) {
-                        deliveryLocations.set(deliveryId, data);
-                        console.log(`📍 Localização atualizada: ${data.deliveryName}`);
-                        
-                        // Atualizar marcador no mapa se estiver aberto
-                        if (deliveryMap) {
-                            updateDeliveryMarker(deliveryId, data);
-                        }
-                    }
-                } else if (change.type === 'removed') {
-                    deliveryLocations.delete(deliveryId);
-                    removeDeliveryMarker(deliveryId);
-                }
-            });
-            
-        }, (error) => {
-            console.error('❌ Erro no listener de localizações:', error);
+snapshot.docChanges().forEach((change) => {
+    const data = change.doc.data();
+    const deliveryId = change.doc.id;
+    
+    console.log(`🔍 DEBUG Motoboy:`, {
+        type: change.type,
+        deliveryId: deliveryId,
+        deliveryName: data.deliveryName,
+        timestamp: data.timestamp,
+        isActive: data.isActive,
+        hasCoordinates: !!(data.latitude && data.longitude)
+    });
+    
+    if (change.type === 'added' || change.type === 'modified') {
+        // Verificar se localização é recente (últimos 30 segundos)
+        const locationTime = new Date(data.timestamp);
+        const now = new Date();
+        const ageInSeconds = (now - locationTime) / 1000;
+        
+        console.log(`⏰ Idade da localização:`, {
+            deliveryName: data.deliveryName,
+            timestamp: data.timestamp,
+            ageInSeconds: Math.round(ageInSeconds),
+            isRecent: ageInSeconds <= 30,
+            isActive: data.isActive
         });
         
-        console.log('✅ Listener de localizações configurado com sucesso');
-    } catch (error) {
-        console.error('❌ Erro ao configurar listener de localizações:', error);
+        if (ageInSeconds <= 30 && data.isActive) {
+            deliveryLocations.set(deliveryId, data);
+            console.log(`📍 Localização atualizada: ${data.deliveryName}`);
+            
+            // Atualizar marcador no mapa se estiver aberto
+            if (deliveryMap) {
+                console.log(`🗺️ Chamando updateDeliveryMarker para ${data.deliveryName}`);
+                updateDeliveryMarker(deliveryId, data);
+            } else {
+                console.log(`⚠️ Mapa não está aberto ainda`);
+            }
+        } else {
+            console.log(`❌ Localização muito antiga ou inativa para ${data.deliveryName}`);
+        }
+    } else if (change.type === 'removed') {
+        deliveryLocations.delete(deliveryId);
+        removeDeliveryMarker(deliveryId);
+        console.log(`🗑️ Localização removida: ${deliveryId}`);
     }
-}
+});
 
 // Atualizar marcador do motoboy no mapa
 function updateDeliveryMarker(deliveryId, locationData) {
-    if (!deliveryMap) return;
+    console.log(`🏍️ INICIO updateDeliveryMarker:`, {
+        deliveryId,
+        deliveryName: locationData.deliveryName,
+        hasMap: !!deliveryMap,
+        latitude: locationData.latitude,
+        longitude: locationData.longitude
+    });
+    
+    if (!deliveryMap) {
+        console.log('❌ deliveryMap não existe');
+        return;
+    }
     
     // Remover marcador anterior se existir
     if (deliveryMarkers.has(deliveryId)) {
