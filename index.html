@@ -2779,24 +2779,18 @@ const activeOrders = Array.from(orders.values()).filter(order => {
         return false;
     }
     
-    // ✅ NOVA REGRA: Pedidos despachados DEVEM ter assignment
-    // Se não tem, foi removido do motoboy e deve sumir do mapa
-    if (['DISPATCHED', 'DSP'].includes(status) && !delivery) {
+    // ✅ REGRA ESPECÍFICA: Apenas pedidos DISPATCHED sem assignment foram removidos
+    // DDCR, CONFIRMED, PLACED sem assignment são NOVOS (OK para mostrar)
+    if (status === 'DISPATCHED' && !delivery) {
         console.log(`❌ Pedido ${order.displayId} excluído: despachado sem assignment (foi removido)`);
         return false;
     }
     
-    // ✅ REGRA ADICIONAL: Pedidos confirmados sem assignment são OK (não foram atribuídos ainda)
-    // Mas pedidos DDCR sem assignment foram removidos
-    if (['DDCR', 'DDCS'].includes(status) && !delivery) {
-        console.log(`❌ Pedido ${order.displayId} excluído: DDCR sem assignment (foi removido)`);
-        return false;
-    }
-    
+    // ✅ Todos os outros pedidos são válidos (incluindo DDCR, CONFIRMED, PLACED novos)
     console.log(`✅ Pedido ${order.displayId} incluído no mapa`);
     return true;
 });
-            
+           
             console.log(`📍 Carregando ${activeOrders.length} pedidos ativos no mapa`);
             
             activeOrders.forEach(order => {
