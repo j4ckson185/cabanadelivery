@@ -2809,23 +2809,64 @@ deliveryLocations.forEach((locationData, deliveryId) => {
         }
 
         
-        // Adicionar pedido à lista lateral
-        function addOrderToSidebar(order) {
-            const mapOrdersList = document.getElementById('mapOrdersList');
-            const delivery = deliveryAssignments.get(order.id);
-            
-            const orderDiv = document.createElement('div');
-            orderDiv.className = `order-item ${selectedOrders.has(order.id) ? 'selected' : ''}`;
-            orderDiv.onclick = () => toggleOrderSelection(order.id);
-            
-            orderDiv.innerHTML = `
-                <input type="checkbox" class="order-checkbox" ${selectedOrders.has(order.id) ? 'checked' : ''} />
-                <span class="order-number">#${order.displayId}</span>
-                <div class="order-status-dot ${getMapStatusClass(order, delivery)}"></div>
-            `;
-            
-            mapOrdersList.appendChild(orderDiv);
+ // Adicionar pedido à lista lateral
+function addOrderToSidebar(order) {
+    const mapOrdersList = document.getElementById('mapOrdersList');
+    const delivery = deliveryAssignments.get(order.id);
+    
+    const orderDiv = document.createElement('div');
+    orderDiv.className = `order-item ${selectedOrders.has(order.id) ? 'selected' : ''}`;
+    
+    // ✅ NOVA FUNCIONALIDADE: Clicar no pedido abre marcador no mapa
+    orderDiv.onclick = (e) => {
+        // Verificar se clicou no checkbox
+        if (e.target.type === 'checkbox') {
+            toggleOrderSelection(order.id);
+            return;
         }
+        
+        // Abrir popup do marcador no mapa
+        openOrderMarkerPopup(order.id);
+        
+        // Também selecionar o pedido
+        toggleOrderSelection(order.id);
+    };
+    
+    orderDiv.innerHTML = `
+        <input type="checkbox" class="order-checkbox" ${selectedOrders.has(order.id) ? 'checked' : ''} 
+               onclick="event.stopPropagation(); toggleOrderSelection('${order.id}')" />
+        <span class="order-number">#${order.displayId}</span>
+        <div class="order-status-dot ${getMapStatusClass(order, delivery)}"></div>
+    `;
+    
+    mapOrdersList.appendChild(orderDiv);
+}
+
+        // Abrir popup do marcador no mapa e centralizar
+function openOrderMarkerPopup(orderId) {
+    const marker = mapMarkers.get(orderId);
+    
+    if (marker && deliveryMap) {
+        console.log(`📍 Abrindo popup do pedido ${orderId} no mapa`);
+        
+        // Centralizar mapa no marcador com zoom suave
+        const markerLatLng = marker.getLatLng();
+        deliveryMap.setView(markerLatLng, Math.max(deliveryMap.getZoom(), 16), {
+            animate: true,
+            duration: 0.5
+        });
+        
+        // Abrir popup do marcador após um pequeno delay
+        setTimeout(() => {
+            marker.openPopup();
+            console.log(`✅ Popup aberto para pedido ${orderId}`);
+        }, 600);
+        
+    } else {
+        console.log(`⚠️ Marcador não encontrado para pedido ${orderId}`);
+        showToast('Marcador não encontrado no mapa', 'info');
+    }
+}
         
         // Obter classe CSS do status para o mapa
         function getMapStatusClass(order, delivery) {
@@ -2920,17 +2961,19 @@ let popupContent = `
                 </div>
             `;
             
-            const marker = L.marker([lat, lng], { icon: markerIcon })
-                .bindPopup(popupContent)
-                .on('click', () => {
-                    // Selecionar pedido na lista lateral automaticamente
-                    if (!selectedOrders.has(order.id)) {
-                        toggleOrderSelection(order.id);
-                    }
-                })
-                .addTo(deliveryMap);
-            
-            mapMarkers.set(order.id, marker);
+// Adicionar marcador ao mapa
+const marker = L.marker([lat, lng], { icon: markerIcon })
+    .bindPopup(popupContent)
+    .on('click', () => {
+        // Selecionar pedido na lista lateral automaticamente
+        if (!selectedOrders.has(order.id)) {
+            toggleOrderSelection(order.id);
+        }
+    })
+    .addTo(deliveryMap);
+
+         // ✅ IMPORTANTE: Guardar referência do marcador para poder abrir popup depois
+             mapMarkers.set(order.id, marker);
         }
         
         // Obter cor do marcador baseado no status
@@ -3792,6 +3835,7 @@ window.addEventListener('beforeunload', () => {
         window.removeOrderFromDelivery = removeOrderFromDelivery;
         window.showOrderActionsModal = showOrderActionsModal;
         window.closeOrderActionsModal = closeOrderActionsModal;
+        window.openOrderMarkerPopup = openOrderMarkerPopup;
     </script>
 </body>
 </html>
