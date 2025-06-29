@@ -515,6 +515,20 @@
             start.setHours(0, 0, 0, 0);
             
             const end = new Date(endDate);
+            console.log('📅 DEBUG Período selecionado:');
+console.log('- startDate input:', startDate);
+console.log('- endDate input:', endDate);
+console.log('- start final:', start.toISOString());
+console.log('- end final:', end.toISOString());
+
+// E depois, dentro do snapshot.forEach, adicione:
+if (data.status === 'concluded' && data.concludedAt) {
+    const concludedDate = new Date(data.concludedAt);
+    console.log('🔍 Pedido:', data.order?.displayId);
+    console.log('- concludedAt:', data.concludedAt);
+    console.log('- concludedDate:', concludedDate.toISOString());
+    console.log('- está no período?', concludedDate >= start && concludedDate <= end);
+}
             end.setHours(23, 59, 59, 999);
 
             const assignmentsRef = window.collection(window.firebaseDb, 'deliveryAssignments');
