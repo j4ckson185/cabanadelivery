@@ -511,25 +511,14 @@
         async function fetchAssignments(startDate, endDate) {
             console.log('🔍 Buscando assignments no Firebase...');
 
-            const start = new Date(startDate);
-            start.setHours(0, 0, 0, 0);
-            
-            const end = new Date(endDate);
-            console.log('📅 DEBUG Período selecionado:');
-console.log('- startDate input:', startDate);
-console.log('- endDate input:', endDate);
-console.log('- start final:', start.toISOString());
-console.log('- end final:', end.toISOString());
+            // Ajustar para UTC considerando fuso brasileiro (UTC-3)
+            const startUTC = new Date(startDate + 'T03:00:00.000Z'); // 00:00 Brasil = 03:00 UTC
+            const endUTC = new Date(endDate + 'T02:59:59.999Z');     // 23:59 Brasil = 02:59 UTC do dia seguinte
+            endUTC.setDate(endUTC.getDate() + 1); // Próximo dia
 
-// E depois, dentro do snapshot.forEach, adicione:
-if (data.status === 'concluded' && data.concludedAt) {
-    const concludedDate = new Date(data.concludedAt);
-    console.log('🔍 Pedido:', data.order?.displayId);
-    console.log('- concludedAt:', data.concludedAt);
-    console.log('- concludedDate:', concludedDate.toISOString());
-    console.log('- está no período?', concludedDate >= start && concludedDate <= end);
-}
-            end.setHours(23, 59, 59, 999);
+            console.log('📅 DEBUG Período em UTC:');
+            console.log('- start:', startUTC.toISOString());
+            console.log('- end:', endUTC.toISOString());
 
             const assignmentsRef = window.collection(window.firebaseDb, 'deliveryAssignments');
             const snapshot = await window.getDocs(assignmentsRef);
@@ -542,12 +531,17 @@ if (data.status === 'concluded' && data.concludedAt) {
                 if (data.status === 'concluded' && data.concludedAt) {
                     const concludedDate = new Date(data.concludedAt);
                     
+                    console.log('🔍 Pedido:', data.order?.displayId);
+                    console.log('- concludedAt:', data.concludedAt);
+                    console.log('- está no período?', concludedDate >= startUTC && concludedDate <= endUTC);
+                    
                     // Verificar se está no período selecionado
-                    if (concludedDate >= start && concludedDate <= end) {
+                    if (concludedDate >= startUTC && concludedDate <= endUTC) {
                         assignments.push({
                             id: doc.id,
                             ...data
                         });
+                        console.log('✅ Incluído no relatório!');
                     }
                 }
             });
