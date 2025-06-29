@@ -3287,6 +3287,9 @@ function updateDeliveryMarker(deliveryId, locationData) {
     // Obter iniciais do nome
     const name = locationData.deliveryName || deliveryId;
     const initials = name.substring(0, 2).toUpperCase();
+
+    // ADICIONAR ESTA LINHA:
+console.log(`🏍️ Criando marcador:`, { name, initials, statusText, statusClass });
     
     // Criar marcador customizado
     const markerIcon = L.divIcon({
@@ -3322,7 +3325,7 @@ function updateDeliveryMarker(deliveryId, locationData) {
     
     deliveryMarkers.set(deliveryId, marker);
     
-    console.log(`🏍️ Marcador atualizado: ${locationData.deliveryName} (${statusText})`);
+    console.log(`✅ Marcador criado e adicionado: ${locationData.deliveryName} (${statusText})`);
 }
 
 // Verificar se motoboy está ocupado
