@@ -3016,7 +3016,7 @@ let unsubscribeAssignments = null; // Para gerenciar o listener do Firebase
             }
         }
 
-        // Configurar listener em tempo real para delivery assignments
+// Configurar listener em tempo real para delivery assignments
 async function setupDeliveryAssignmentsListener() {
     // Limpar listener anterior se existir
     if (unsubscribeAssignments) {
@@ -3043,7 +3043,7 @@ async function setupDeliveryAssignmentsListener() {
                 
                 if (change.type === 'added' || change.type === 'modified') {
                     const oldAssignment = deliveryAssignments.get(orderId);
-                    deliveryAssignments.set(orderId, {
+                    const newAssignment = {
                         deliveryId: data.deliveryId,
                         deliveryName: data.deliveryName,
                         status: data.status,
@@ -3051,7 +3051,9 @@ async function setupDeliveryAssignmentsListener() {
                         acceptedAt: data.acceptedAt,
                         dispatchedAt: data.dispatchedAt,
                         concludedAt: data.concludedAt
-                    });
+                    };
+                    
+                    deliveryAssignments.set(orderId, newAssignment);
                     
                     // Verificar se houve mudança de status
                     if (oldAssignment && oldAssignment.status !== data.status) {
@@ -3060,17 +3062,79 @@ async function setupDeliveryAssignmentsListener() {
                     } else if (!oldAssignment) {
                         console.log(`📱 Nova atribuição: ${orderId} → ${data.deliveryName} (${data.status})`);
                         hasChanges = true;
+                    } else {
+                        console.log(`📱 Assignment ${orderId} atualizado mas status mantido: ${data.status}`);
                     }
                 } else if (change.type === 'removed') {
                     deliveryAssignments.delete(orderId);
                     hasChanges = true;
+                    console.log(`📱 Assignment removido: ${orderId}`);
                 }
             });
             
-            // Atualizar mapa se estiver aberto e houve mudanças
-            if (hasChanges && deliveryMap) {
-                console.log('🗺️ Atualizando mapa devido a mudanças nos assignments');
-                loadMapOrders();
+            // Sincronizar status do Firebase com o orders map
+            if (hasChanges) {
+                console.log('🔄 Iniciando sincronização Firebase → Orders map...');
+                let ordersUpdated = false;
+                let syncCount = 0;
+                
+                // Atualizar status dos pedidos baseado nas atribuições do Firebase
+                deliveryAssignments.forEach((assignment, orderId) => {
+                    const order = orders.get(orderId);
+                    if (order) {
+                        let newOrderStatus = order.orderStatus;
+                        const currentStatus = order.orderStatus;
+                        
+                        // Mapear status do Firebase para status do pedido
+                        switch (assignment.status) {
+                            case 'sent':
+                                // Manter status atual se for CONFIRMED/DDCR/DDCS, senão voltar para CONFIRMED
+                                if (!['CONFIRMED', 'DDCR', 'DDCS'].includes(currentStatus)) {
+                                    newOrderStatus = 'CONFIRMED';
+                                }
+                                break;
+                            case 'accepted':
+                                // Manter status atual se for CONFIRMED/DDCR/DDCS, senão definir como CONFIRMED
+                                if (!['CONFIRMED', 'DDCR', 'DDCS'].includes(currentStatus)) {
+                                    newOrderStatus = 'CONFIRMED';
+                                }
+                                break;
+                            case 'dispatched':
+                                newOrderStatus = 'DISPATCHED';
+                                break;
+                            case 'concluded':
+                                newOrderStatus = 'CONCLUDED';
+                                break;
+                        }
+                        
+                        // Se o status mudou, atualizar o pedido
+                        if (newOrderStatus !== currentStatus) {
+                            console.log(`🔄 Sincronizando status do pedido ${order.displayId}: ${currentStatus} → ${newOrderStatus} (via Firebase assignment: ${assignment.status})`);
+                            order.orderStatus = newOrderStatus;
+                            orders.set(orderId, order);
+                            ordersUpdated = true;
+                            syncCount++;
+                        }
+                    } else {
+                        console.log(`⚠️ Pedido ${orderId} encontrado no Firebase mas não no orders map`);
+                    }
+                });
+                
+                // Se os pedidos foram atualizados, re-renderizar
+                if (ordersUpdated) {
+                    console.log(`🔄 ${syncCount} pedidos sincronizados via Firebase, salvando e re-renderizando...`);
+                    saveToStorage();
+                    applyFilters();
+                    renderOrders();
+                } else {
+                    console.log('🔄 Nenhum status de pedido precisou ser sincronizado');
+                }
+                
+                // Atualizar mapa se estiver aberto
+                if (deliveryMap) {
+                    console.log('🗺️ Atualizando mapa devido a mudanças nos assignments');
+                    loadMapOrders();
+                }
             }
         }, (error) => {
             console.error('❌ Erro no listener de assignments:', error);
