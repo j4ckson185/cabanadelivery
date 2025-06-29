@@ -788,6 +788,42 @@
                 height: calc(100vh - 180px);
             }
         }
+
+        /* Marcador de localização do usuário */
+.user-location-marker {
+    width: 20px;
+    height: 20px;
+    background: #3b82f6;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+    animation: pulse-location 2s infinite;
+    position: relative;
+}
+
+.user-location-marker::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+}
+
+@keyframes pulse-location {
+    0% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    }
+}
     </style>
 </head>
 <body>
@@ -1120,6 +1156,11 @@
             // Atualizar botões de navegação
             document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
+
+            // Parar localização se sair da aba do mapa
+if (currentTab === 'mapa' && tabName !== 'mapa') {
+    stopLocationTracking();
+}
             
             // Esconder todas as abas
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -1190,9 +1231,116 @@
             deliveryMap.setMaxBounds(bounds);
             deliveryMap.setMinZoom(12);
             deliveryMap.setMaxZoom(18);
+
+           // Inicializar localização do usuário após o mapa estar pronto
+           setTimeout(() => {
+           initializeUserLocation();
+           }, 1000);
             
             console.log('✅ Mapa inicializado com sucesso');
         }
+
+        // Variáveis para localização do usuário
+let userLocationMarker = null;
+let watchId = null;
+
+// Inicializar localização do usuário
+function initializeUserLocation() {
+    if (!navigator.geolocation) {
+        console.log('⚠️ Geolocalização não suportada pelo navegador');
+        return;
+    }
+
+    console.log('📍 Iniciando rastreamento de localização...');
+
+// Opções de geolocalização para entregador em movimento
+const options = {
+    enableHighAccuracy: true,     // Máxima precisão (GPS)
+    timeout: 5000,               // 5 segundos para obter localização
+    maximumAge: 2000             // ✅ Apenas 2 segundos de cache
+};
+
+    // Obter localização inicial
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            console.log('📍 Localização inicial obtida');
+            updateUserLocation(position);
+        },
+        (error) => {
+            console.warn('⚠️ Erro ao obter localização:', error.message);
+        },
+        options
+    );
+
+    // Rastrear localização continuamente
+    watchId = navigator.geolocation.watchPosition(
+        (position) => {
+            updateUserLocation(position);
+        },
+        (error) => {
+            console.warn('⚠️ Erro no rastreamento:', error.message);
+        },
+        options
+    );
+}
+
+// Atualizar marcador de localização do usuário
+function updateUserLocation(position) {
+    if (!deliveryMap) return;
+
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+    const accuracy = position.coords.accuracy;
+
+    console.log(`📍 Localização atualizada: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${Math.round(accuracy)}m)`);
+
+    // Remover marcador anterior se existir
+    if (userLocationMarker) {
+        deliveryMap.removeLayer(userLocationMarker);
+    }
+
+    // Criar novo marcador de localização
+    const locationIcon = L.divIcon({
+        html: '<div class="user-location-marker"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+        className: 'user-location-icon'
+    });
+
+    // Adicionar marcador no mapa
+    userLocationMarker = L.marker([lat, lng], { 
+        icon: locationIcon,
+        zIndexOffset: 1000 // Ficar acima dos outros marcadores
+    })
+    .bindPopup(`
+        <div style="text-align: center;">
+            <div style="font-weight: 600; color: #3b82f6; margin-bottom: 0.5rem;">
+                📍 Sua Localização
+            </div>
+            <div style="font-size: 0.875rem; color: #64748b;">
+                Precisão: ±${Math.round(accuracy)}m
+            </div>
+        </div>
+    `)
+    .addTo(deliveryMap);
+
+    console.log('✅ Marcador de localização atualizado');
+}
+
+// Parar rastreamento de localização
+function stopLocationTracking() {
+    if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        console.log('🛑 Rastreamento de localização parado');
+    }
+
+    if (userLocationMarker && deliveryMap) {
+        deliveryMap.removeLayer(userLocationMarker);
+        userLocationMarker = null;
+        console.log('🗑️ Marcador de localização removido');
+    }
+}
 
         // Carregar pedidos no mapa
         function loadMapOrders() {
