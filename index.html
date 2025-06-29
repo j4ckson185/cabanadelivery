@@ -2884,6 +2884,10 @@ deliveryLocations.forEach((locationData, deliveryId) => {
             }
             
             popupContent += `
+                    <button onclick="cancelOrderFromMap('${order.id}')" 
+        style="margin-top: 10px; margin-right: 5px; padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">
+    ❌ Cancelar
+</button>
                     <button onclick="openOrderModal('${order.id}')" 
                             style="margin-top: 10px; padding: 8px 16px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer;">
                         Ver Detalhes
@@ -3355,6 +3359,117 @@ function removeDeliveryMarker(deliveryId) {
         deliveryMap.removeLayer(deliveryMarkers.get(deliveryId));
         deliveryMarkers.delete(deliveryId);
         console.log(`🗑️ Marcador removido: ${deliveryId}`);
+    }
+}
+
+    // Cancelar pedido diretamente do mapa
+async function cancelOrderFromMap(orderId) {
+    const order = orders.get(orderId);
+    if (!order) {
+        showToast('Pedido não encontrado', 'error');
+        return;
+    }
+
+    // Confirmar cancelamento
+    const confirmed = confirm(`Cancelar pedido #${order.displayId}?\n\nCliente: ${order.customer?.name || 'N/A'}\nTotal: ${formatCurrency(order.total?.orderAmount || 0)}`);
+    
+    if (!confirmed) return;
+
+    try {
+        // Buscar motivos de cancelamento
+        const reasons = await getCancellationReasons(orderId);
+        
+        if (!reasons || reasons.length === 0) {
+            // Usar motivos padrão se não conseguir buscar
+            const defaultReasons = [
+                { code: 'STORE_UNAVAILABLE', description: 'Loja Indisponível' },
+                { code: 'ITEM_UNAVAILABLE', description: 'Item Indisponível' },
+                { code: 'OTHER', description: 'Outros Motivos' }
+            ];
+            showMapCancellationModal(orderId, defaultReasons);
+        } else {
+            showMapCancellationModal(orderId, reasons);
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro ao buscar motivos de cancelamento:', error);
+        showToast('Erro ao cancelar pedido', 'error');
+    }
+}
+
+// Modal de cancelamento simplificado para o mapa
+function showMapCancellationModal(orderId, reasons) {
+    const order = orders.get(orderId);
+    
+    // Criar modal simples
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.id = 'mapCancelModal';
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                <div class="modal-title">❌ Cancelar Pedido</div>
+                <div class="modal-subtitle">Pedido #${order.displayId}</div>
+                <button class="close-btn" onclick="closeMapCancelModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem; color: #64748b;">Motivo do cancelamento:</p>
+                <select id="mapCancelReason" style="width: 100%; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; margin-bottom: 1rem;">
+                    ${reasons.map(reason => `<option value="${reason.code}">${reason.description}</option>`).join('')}
+                </select>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button onclick="confirmMapCancellation('${orderId}')" style="flex: 1; padding: 0.75rem; background: #ef4444; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                        ❌ Confirmar Cancelamento
+                    </button>
+                    <button onclick="closeMapCancelModal()" style="flex: 1; padding: 0.75rem; background: #6b7280; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Fechar modal de cancelamento do mapa
+function closeMapCancelModal() {
+    const modal = document.getElementById('mapCancelModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Confirmar cancelamento do mapa
+async function confirmMapCancellation(orderId) {
+    try {
+        const reasonSelect = document.getElementById('mapCancelReason');
+        const reasonCode = reasonSelect.value;
+        
+        console.log(`🔄 Cancelando pedido ${orderId} via mapa com motivo: ${reasonCode}`);
+        
+        // Cancelar via API
+        await apiRequest(`/order/v1.0/orders/${orderId}/requestCancellation`, {
+            method: 'POST',
+            body: { reason: reasonCode }
+        });
+        
+        // Fechar modal
+        closeMapCancelModal();
+        
+        const order = orders.get(orderId);
+        showToast(`🔄 Solicitação de cancelamento enviada para pedido #${order?.displayId}`, 'success');
+        
+        // Atualizar mapa
+        setTimeout(() => {
+            loadMapOrders();
+        }, 1000);
+        
+    } catch (error) {
+        console.error('❌ Erro ao cancelar pedido via mapa:', error);
+        showToast('Erro ao cancelar pedido', 'error');
     }
 }
         
