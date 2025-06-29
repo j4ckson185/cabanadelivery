@@ -2760,17 +2760,21 @@ let unsubscribeAssignments = null; // Para gerenciar o listener do Firebase
             });
             mapMarkers.clear();
             
-            // Filtrar apenas pedidos ativos (não concluídos nem cancelados)
-            const activeOrders = Array.from(orders.values()).filter(order => {
-                const status = order.orderStatus || 'PLACED';
-                const delivery = deliveryAssignments.get(order.id);
-                
-                // Não mostrar pedidos concluídos via API ou via motoboy
-                if (['CONCLUDED', 'CON', 'CANCELLED', 'CAN'].includes(status)) return false;
-                if (delivery && delivery.status === 'concluded') return false;
-                
-                return true;
-            });
+// Filtrar apenas pedidos ativos (não concluídos nem cancelados)
+const activeOrders = Array.from(orders.values()).filter(order => {
+    const status = order.orderStatus || 'PLACED';
+    const delivery = deliveryAssignments.get(order.id);
+    
+    // Não mostrar pedidos concluídos via API ou via motoboy
+    if (['CONCLUDED', 'CON', 'CANCELLED', 'CAN'].includes(status)) return false;
+    if (delivery && delivery.status === 'concluded') return false;
+    
+    // ✅ NOVA REGRA: Não mostrar pedidos que estavam atribuídos mas foram removidos
+    // Se o pedido estava DISPATCHED mas não tem assignment, foi removido
+    if (['DISPATCHED', 'DSP'].includes(status) && !delivery) return false;
+    
+    return true;
+});
             
             console.log(`📍 Carregando ${activeOrders.length} pedidos ativos no mapa`);
             
@@ -3124,10 +3128,18 @@ async function setupDeliveryAssignmentsListener() {
                     } else {
                         console.log(`📱 Assignment ${orderId} atualizado mas status mantido: ${data.status}`);
                     }
-                } else if (change.type === 'removed') {
+} else if (change.type === 'removed') {
                     deliveryAssignments.delete(orderId);
                     hasChanges = true;
                     console.log(`📱 Assignment removido: ${orderId}`);
+                    
+                    // ✅ Atualizar mapa imediatamente quando assignment é removido
+                    if (deliveryMap) {
+                        console.log('🗺️ Atualizando mapa devido a remoção de assignment');
+                        setTimeout(() => {
+                            loadMapOrders();
+                        }, 500);
+                    }
                 }
             });
             
