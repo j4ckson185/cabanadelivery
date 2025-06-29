@@ -3259,6 +3259,16 @@ snapshot.docChanges().forEach((change) => {
     }
 });
 
+}, (error) => {
+    console.error('❌ Erro no listener de localizações:', error);
+});
+
+console.log('✅ Listener de localizações configurado com sucesso');
+} catch (error) {
+    console.error('❌ Erro ao configurar listener de localizações:', error);
+}
+} // ← Este } fecha a função setupDeliveryLocationsListener
+
 // Atualizar marcador do motoboy no mapa
 function updateDeliveryMarker(deliveryId, locationData) {
     console.log(`🏍️ INICIO updateDeliveryMarker:`, {
