@@ -2765,14 +2765,35 @@ const activeOrders = Array.from(orders.values()).filter(order => {
     const status = order.orderStatus || 'PLACED';
     const delivery = deliveryAssignments.get(order.id);
     
-    // Não mostrar pedidos concluídos via API ou via motoboy
-    if (['CONCLUDED', 'CON', 'CANCELLED', 'CAN'].includes(status)) return false;
-    if (delivery && delivery.status === 'concluded') return false;
+    console.log(`🔍 Filtro mapa - Pedido ${order.displayId}: status=${status}, hasAssignment=${!!delivery}`);
     
-    // ✅ NOVA REGRA: Não mostrar pedidos que estavam atribuídos mas foram removidos
-    // Se o pedido estava DISPATCHED mas não tem assignment, foi removido
-    if (['DISPATCHED', 'DSP'].includes(status) && !delivery) return false;
+    // Não mostrar pedidos concluídos ou cancelados
+    if (['CONCLUDED', 'CON', 'CANCELLED', 'CAN'].includes(status)) {
+        console.log(`❌ Pedido ${order.displayId} excluído: status final`);
+        return false;
+    }
     
+    // Não mostrar pedidos concluídos via motoboy
+    if (delivery && delivery.status === 'concluded') {
+        console.log(`❌ Pedido ${order.displayId} excluído: concluído via motoboy`);
+        return false;
+    }
+    
+    // ✅ NOVA REGRA: Pedidos despachados DEVEM ter assignment
+    // Se não tem, foi removido do motoboy e deve sumir do mapa
+    if (['DISPATCHED', 'DSP'].includes(status) && !delivery) {
+        console.log(`❌ Pedido ${order.displayId} excluído: despachado sem assignment (foi removido)`);
+        return false;
+    }
+    
+    // ✅ REGRA ADICIONAL: Pedidos confirmados sem assignment são OK (não foram atribuídos ainda)
+    // Mas pedidos DDCR sem assignment foram removidos
+    if (['DDCR', 'DDCS'].includes(status) && !delivery) {
+        console.log(`❌ Pedido ${order.displayId} excluído: DDCR sem assignment (foi removido)`);
+        return false;
+    }
+    
+    console.log(`✅ Pedido ${order.displayId} incluído no mapa`);
     return true;
 });
             
@@ -3512,12 +3533,22 @@ async function removeOrderFromDelivery(orderId) {
         // Importar função do Firebase
         const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
         
-        // Deletar assignment do Firebase
-        const docRef = doc(window.firebaseDb, 'deliveryAssignments', orderId);
-        await deleteDoc(docRef);
-        
-        console.log('✅ Assignment removido do Firebase');
-        showToast(`✅ Pedido #${order.displayId} removido do motoboy ${assignment.deliveryName}`, 'success');
+// Deletar assignment do Firebase
+const docRef = doc(window.firebaseDb, 'deliveryAssignments', orderId);
+await deleteDoc(docRef);
+
+console.log('✅ Assignment removido do Firebase');
+
+// ✅ ADICIONAR: Remover localmente e limpar mapa imediatamente
+deliveryAssignments.delete(orderId);
+
+// Forçar atualização do mapa
+if (deliveryMap) {
+    console.log('🗑️ Forçando atualização do mapa após remoção');
+    loadMapOrders();
+}
+
+showToast(`✅ Pedido #${order.displayId} removido do motoboy ${assignment.deliveryName}`, 'success');
         
         // Remover localmente também
         deliveryAssignments.delete(orderId);
