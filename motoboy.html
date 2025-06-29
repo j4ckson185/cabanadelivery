@@ -866,6 +866,29 @@
 .leaflet-container {
     touch-action: pan-x pan-y pinch-zoom !important;
 }
+
+/* Toast de notificação de som */
+.sound-toast {
+    position: fixed;
+    top: 90px;
+    right: 2rem;
+    background: #10b981;
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 2000;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s ease;
+}
+
+.sound-toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
     </style>
 </head>
 <body>
@@ -1076,6 +1099,12 @@
                     if (userDeliveryId) {
                         showApp();
                         setupRealTimeListeners();
+                        initializeAudio();
+
+                        // Pedir permissão para notificações
+                        if (Notification.permission === 'default') {
+                            Notification.requestPermission();
+                        }
                     } else {
                         showError('Usuário não autorizado');
                         logout();
@@ -1494,6 +1523,123 @@ function stopLocationTracking() {
     }
 }
 
+        // ============ NOTIFICAÇÕES SONORAS ============
+
+// Variáveis para áudio
+let audioContext = null;
+let userHasInteracted = false;
+
+// Inicializar sistema de áudio
+function initializeAudio() {
+    // Detectar primeira interação do usuário
+    document.addEventListener('click', enableAudio, { once: true });
+    document.addEventListener('touchstart', enableAudio, { once: true });
+}
+
+// Habilitar áudio após interação do usuário
+function enableAudio() {
+    userHasInteracted = true;
+    
+    try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('🔊 Sistema de áudio inicializado');
+    } catch (error) {
+        console.warn('⚠️ Erro ao inicializar áudio:', error);
+    }
+}
+
+// Tocar som de notificação
+function playNotificationSound() {
+    if (!audioContext || !userHasInteracted) {
+        console.log('⚠️ Áudio não disponível ainda - usuário precisa interagir primeiro');
+        return;
+    }
+
+    try {
+        // Gerar som de sino programaticamente
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        // Conectar nós
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Configurar som de sino (duas frequências)
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+        
+        // Configurar volume (envelope)
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        
+        // Tocar som
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+        
+        console.log('🔔 Som de notificação tocado');
+        
+        // Mostrar toast visual
+        showSoundToast('🔔 Novo pedido recebido!');
+        
+    } catch (error) {
+        console.error('❌ Erro ao tocar som:', error);
+    }
+}
+
+// Mostrar toast de notificação
+function showSoundToast(message) {
+    // Remover toast anterior se existir
+    const existingToast = document.querySelector('.sound-toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+    
+    // Criar novo toast
+    const toast = document.createElement('div');
+    toast.className = 'sound-toast';
+    toast.textContent = message;
+    
+    document.body.appendChild(toast);
+    
+    // Mostrar toast
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    // Esconder após 3 segundos
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Tentar tocar som com vibração de fallback
+function notifyNewOrder() {
+    // Som principal
+    playNotificationSound();
+    
+    // Vibração como backup (se suportado)
+    if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200]); // Padrão: vibra-pausa-vibra
+        console.log('📳 Vibração ativada');
+    }
+    
+    // Tentar notificação do browser (se permitido)
+    if (Notification.permission === 'granted') {
+        new Notification('🔔 Novo Pedido', {
+            body: 'Você recebeu um novo pedido para entrega!',
+            icon: '🏍️',
+            tag: 'new-order'
+        });
+    }
+}
+
         // Carregar pedidos no mapa
         function loadMapOrders() {
             if (!deliveryMap) {
@@ -1713,6 +1859,14 @@ function stopLocationTracking() {
             const cardsHTML = activeAssignments.map(assignment => createOrderCard(assignment)).join('');
             ordersGrid.innerHTML = cardsHTML;
         }
+
+// Detectar novos pedidos e tocar som
+const currentOrderCount = activeAssignments.length;
+if (window.lastOrderCount && currentOrderCount > window.lastOrderCount) {
+    console.log('🔔 Novo pedido detectado!');
+    notifyNewOrder();
+}
+window.lastOrderCount = currentOrderCount;
 
         // Criar card do pedido
         function createOrderCard(assignment) {
