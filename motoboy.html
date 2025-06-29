@@ -824,6 +824,48 @@
         box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
     }
 }
+
+        /* Controles de rotação do mapa */
+.rotation-controls {
+    position: absolute;
+    top: 60px;
+    right: 10px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.rotation-btn {
+    width: 35px;
+    height: 35px;
+    background: white;
+    border: 2px solid rgba(0,0,0,0.2);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.rotation-btn:hover {
+    background: #f4f4f4;
+}
+
+.rotation-btn:active {
+    background: #e4e4e4;
+}
+
+/* Permitir rotação do mapa */
+.leaflet-container {
+    touch-action: pan-x pan-y pinch-zoom !important;
+}
     </style>
 </head>
 <body>
@@ -1183,6 +1225,11 @@ if (currentTab === 'mapa' && tabName !== 'mapa') {
 
         // ============ FUNCIONALIDADES DO MAPA ============
 
+ // Variáveis para rotação
+let mapRotation = 0;
+let isRotating = false;
+let lastTouchAngle = 0;
+
         // Inicializar mapa
         function initializeMap() {
             if (deliveryMap) {
@@ -1236,9 +1283,109 @@ if (currentTab === 'mapa' && tabName !== 'mapa') {
            setTimeout(() => {
            initializeUserLocation();
            }, 1000);
+
+            addRotationControls();
+            addTouchRotation();
             
             console.log('✅ Mapa inicializado com sucesso');
         }
+
+        // Adicionar controles de rotação
+function addRotationControls() {
+    const mapContainer = document.getElementById('deliveryMap');
+    
+    const controlsDiv = document.createElement('div');
+    controlsDiv.className = 'rotation-controls';
+    
+    // Botão rotacionar horário
+    const rotateRightBtn = document.createElement('div');
+    rotateRightBtn.className = 'rotation-btn';
+    rotateRightBtn.innerHTML = '↻';
+    rotateRightBtn.title = 'Girar à direita';
+    rotateRightBtn.onclick = () => rotateMap(15);
+    
+    // Botão rotacionar anti-horário  
+    const rotateLeftBtn = document.createElement('div');
+    rotateLeftBtn.className = 'rotation-btn';
+    rotateLeftBtn.innerHTML = '↺';
+    rotateLeftBtn.title = 'Girar à esquerda';
+    rotateLeftBtn.onclick = () => rotateMap(-15);
+    
+    // Botão resetar rotação
+    const resetBtn = document.createElement('div');
+    resetBtn.className = 'rotation-btn';
+    resetBtn.innerHTML = '⊕';
+    resetBtn.title = 'Resetar rotação';
+    resetBtn.onclick = () => resetMapRotation();
+    
+    controlsDiv.appendChild(rotateRightBtn);
+    controlsDiv.appendChild(rotateLeftBtn);
+    controlsDiv.appendChild(resetBtn);
+    
+    mapContainer.appendChild(controlsDiv);
+}
+
+// Rotacionar mapa
+function rotateMap(degrees) {
+    mapRotation += degrees;
+    applyRotation();
+}
+
+// Resetar rotação
+function resetMapRotation() {
+    mapRotation = 0;
+    applyRotation();
+}
+
+// Aplicar rotação
+function applyRotation() {
+    const mapDiv = deliveryMap.getContainer();
+    mapDiv.style.transform = `rotate(${mapRotation}deg)`;
+    console.log(`🔄 Mapa rotacionado: ${mapRotation}°`);
+}
+
+// Adicionar rotação por touch
+function addTouchRotation() {
+    const mapContainer = deliveryMap.getContainer();
+    let touches = [];
+    
+    mapContainer.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            isRotating = true;
+            touches = Array.from(e.touches);
+            lastTouchAngle = getTouchAngle(touches[0], touches[1]);
+        }
+    }, { passive: false });
+    
+    mapContainer.addEventListener('touchmove', (e) => {
+        if (isRotating && e.touches.length === 2) {
+            e.preventDefault();
+            const currentAngle = getTouchAngle(e.touches[0], e.touches[1]);
+            const angleDiff = currentAngle - lastTouchAngle;
+            
+            if (Math.abs(angleDiff) < 180) {
+                mapRotation += angleDiff * 0.5;
+                applyRotation();
+            }
+            
+            lastTouchAngle = currentAngle;
+        }
+    }, { passive: false });
+    
+    mapContainer.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+            isRotating = false;
+        }
+    });
+}
+
+// Calcular ângulo entre dois pontos de toque
+function getTouchAngle(touch1, touch2) {
+    const dx = touch2.clientX - touch1.clientX;
+    const dy = touch2.clientY - touch1.clientY;
+    return Math.atan2(dy, dx) * (180 / Math.PI);
+}
 
         // Variáveis para localização do usuário
 let userLocationMarker = null;
