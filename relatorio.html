@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Entregas - Cabana Delivery</title>
+    
+    <!-- Firebase -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyBuRHTtuKgpQE_qAdMIbT9_9qbjh4cbLI8",
+            authDomain: "apiifood-e0d35.firebaseapp.com",
+            projectId: "apiifood-e0d35",
+            storageBucket: "apiifood-e0d35.firebasestorage.app",
+            messagingSenderId: "905864103175",
+            appId: "1:905864103175:web:a198383d3a66a7d2cd31a2"
+        };
+        
+        window.firebaseApp = initializeApp(firebaseConfig);
+        window.firebaseDb = getFirestore(window.firebaseApp);
+        window.collection = collection;
+        window.getDocs = getDocs;
+        window.query = query;
+        window.where = where;
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #1e293b;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .header-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .controls {
+            padding: 2rem;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .date-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .date-label {
+            font-weight: 500;
+            color: #374151;
+            white-space: nowrap;
+        }
+
+        .date-input {
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        .date-input:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+        }
+
+        .btn:hover {
+            background: #7c3aed;
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #64748b;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-radius: 50%;
+            border-top-color: #8b5cf6;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .summary {
+            padding: 2rem;
+            background: #f0fdf4;
+            border-bottom: 1px solid #bbf7d0;
+        }
+
+        .summary-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #166534;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .summary-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid #bbf7d0;
+        }
+
+        .summary-label {
+            font-size: 0.875rem;
+            color: #166534;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .summary-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #059669;
+        }
+
+        .reports-container {
+            padding: 2rem;
+        }
+
+        .delivery-section {
+            margin-bottom: 3rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .delivery-header {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .delivery-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .delivery-stats {
+            display: flex;
+            gap: 2rem;
+            font-size: 0.875rem;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-label {
+            opacity: 0.9;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            margin-top: 0.25rem;
+        }
+
+        .orders-list {
+            background: white;
+        }
+
+        .order-item {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: grid;
+            grid-template-columns: auto 1fr auto auto;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .order-item:last-child {
+            border-bottom: none;
+        }
+
+        .order-id {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 0.875rem;
+        }
+
+        .order-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .customer-name {
+            font-weight: 500;
+            color: #1e293b;
+            font-size: 0.875rem;
+        }
+
+        .order-time {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .payment-info {
+            text-align: center;
+            font-size: 0.875rem;
+        }
+
+        .payment-method {
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .payment-status {
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        .payment-offline {
+            color: #dc2626;
+            font-weight: 600;
+        }
+
+        .payment-online {
+            color: #059669;
+            font-weight: 600;
+        }
+
+        .order-total {
+            font-weight: 600;
+            color: #1e293b;
+            text-align: right;
+        }
+
+        .totals-section {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-top: 2px solid #3b82f6;
+        }
+
+        .totals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .total-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .total-label {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+
+        .total-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .cash-value {
+            color: #dc2626;
+        }
+
+        .card-value {
+            color: #059669;
+        }
+
+        .total-value-main {
+            color: #8b5cf6;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #64748b;
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .date-group {
+                justify-content: space-between;
+            }
+
+            .delivery-stats {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .order-item {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }
+
+            .totals-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-title">📊 Relatório de Entregas</div>
+            <div class="header-subtitle">Pedidos Concluídos por Entregador</div>
+        </div>
+
+        <div class="controls">
+            <div class="date-group">
+                <label class="date-label" for="startDate">De:</label>
+                <input type="date" id="startDate" class="date-input">
+            </div>
+            <div class="date-group">
+                <label class="date-label" for="endDate">Até:</label>
+                <input type="date" id="endDate" class="date-input">
+            </div>
+            <button class="btn" onclick="generateReport()">
+                📈 Gerar Relatório
+            </button>
+        </div>
+
+        <div id="loadingSection" class="loading" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>Carregando dados...</p>
+        </div>
+
+        <div id="summarySection" class="summary" style="display: none;">
+            <div class="summary-title">📋 Resumo Geral</div>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-label">Total de Pedidos</div>
+                    <div class="summary-value" id="totalOrders">0</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Total Dinheiro</div>
+                    <div class="summary-value" id="totalCash">R$ 0,00</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Total Cartão</div>
+                    <div class="summary-value" id="totalCard">R$ 0,00</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Total a Repassar</div>
+                    <div class="summary-value" id="grandTotal">R$ 0,00</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="reportsContainer" class="reports-container">
+            <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <p>Selecione um período e clique em "Gerar Relatório" para visualizar os dados</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estado da aplicação
+        let reportData = new Map();
+        
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            // Definir datas padrão (hoje)
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').value = today;
+            document.getElementById('endDate').value = today;
+        });
+
+        // Gerar relatório
+        async function generateReport() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            if (!startDate || !endDate) {
+                alert('Por favor, selecione as datas de início e fim');
+                return;
+            }
+
+            if (new Date(startDate) > new Date(endDate)) {
+                alert('A data de início não pode ser maior que a data de fim');
+                return;
+            }
+
+            console.log(`📊 Gerando relatório de ${startDate} até ${endDate}`);
+
+            // Mostrar loading
+            document.getElementById('loadingSection').style.display = 'block';
+            document.getElementById('summarySection').style.display = 'none';
+            document.getElementById('reportsContainer').innerHTML = '';
+
+            try {
+                // Buscar dados do Firebase
+                const assignments = await fetchAssignments(startDate, endDate);
+                console.log(`📦 ${assignments.length} assignments encontrados`);
+
+                // Processar dados
+                const processedData = processAssignments(assignments);
+                console.log('📊 Dados processados:', processedData);
+
+                // Renderizar relatório
+                renderReport(processedData);
+
+            } catch (error) {
+                console.error('❌ Erro ao gerar relatório:', error);
+                document.getElementById('reportsContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">❌</div>
+                        <p>Erro ao carregar dados: ${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                document.getElementById('loadingSection').style.display = 'none';
+            }
+        }
+
+        // Buscar assignments do Firebase
+        async function fetchAssignments(startDate, endDate) {
+            console.log('🔍 Buscando assignments no Firebase...');
+
+            const start = new Date(startDate);
+            start.setHours(0, 0, 0, 0);
+            
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999);
+
+            const assignmentsRef = window.collection(window.firebaseDb, 'deliveryAssignments');
+            const snapshot = await window.getDocs(assignmentsRef);
+
+            const assignments = [];
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                
+                // Filtrar apenas pedidos concluídos
+                if (data.status === 'concluded' && data.concludedAt) {
+                    const concludedDate = new Date(data.concludedAt);
+                    
+                    // Verificar se está no período selecionado
+                    if (concludedDate >= start && concludedDate <= end) {
+                        assignments.push({
+                            id: doc.id,
+                            ...data
+                        });
+                    }
+                }
+            });
+
+            console.log(`✅ ${assignments.length} assignments concluídos encontrados no período`);
+            return assignments;
+        }
+
+        // Processar assignments para o relatório
+        function processAssignments(assignments) {
+            const deliveryData = new Map();
+
+            assignments.forEach(assignment => {
+                const order = assignment.order;
+                if (!order) return;
+
+                const deliveryId = assignment.deliveryId;
+                const deliveryName = assignment.deliveryName;
+
+                // Inicializar dados do entregador se não existir
+                if (!deliveryData.has(deliveryId)) {
+                    deliveryData.set(deliveryId, {
+                        name: deliveryName,
+                        orders: [],
+                        totalCash: 0,
+                        totalCard: 0,
+                        totalOffline: 0,
+                        orderCount: 0
+                    });
+                }
+
+                const deliveryInfo = deliveryData.get(deliveryId);
+
+                // Processar pagamentos
+                const paymentInfo = analyzePayments(order);
+                
+                // Adicionar pedido
+                deliveryInfo.orders.push({
+                    id: order.id,
+                    displayId: order.displayId,
+                    customerName: order.customer?.name || 'Cliente',
+                    total: order.total?.orderAmount || 0,
+                    concludedAt: assignment.concludedAt,
+                    paymentInfo: paymentInfo
+                });
+
+                // Somar valores offline (que devem ser entregues à loja)
+                deliveryInfo.totalCash += paymentInfo.cashOffline;
+                deliveryInfo.totalCard += paymentInfo.cardOffline;
+                deliveryInfo.totalOffline += paymentInfo.totalOffline;
+                deliveryInfo.orderCount++;
+
+                deliveryData.set(deliveryId, deliveryInfo);
+            });
+
+            return deliveryData;
+        }
+
+        // Analisar pagamentos do pedido
+        function analyzePayments(order) {
+            let cashOffline = 0;
+            let cardOffline = 0;
+            let totalOffline = 0;
+            let mainPaymentMethod = 'N/A';
+            let isOffline = false;
+
+            if (order.payments?.methods) {
+                const payment = order.payments.methods[0]; // Pegar método principal
+                
+                if (payment) {
+                    mainPaymentMethod = getPaymentMethodLabel(payment);
+                    
+                    // Verificar se é pagamento offline (na entrega)
+                    if (payment.type === 'OFFLINE') {
+                        isOffline = true;
+                        const value = payment.value || 0;
+                        
+                        if (payment.method === 'CASH') {
+                            cashOffline = value;
+                        } else {
+                            cardOffline = value;
+                        }
+                        
+                        totalOffline = value;
+                    }
+                }
+            }
+
+            return {
+                mainPaymentMethod,
+                isOffline,
+                cashOffline,
+                cardOffline,
+                totalOffline
+            };
+        }
+
+        // Renderizar relatório
+        function renderReport(deliveryData) {
+            if (deliveryData.size === 0) {
+                document.getElementById('reportsContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <p>Nenhum pedido concluído encontrado no período selecionado</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Calcular totais gerais
+            let grandTotalOrders = 0;
+            let grandTotalCash = 0;
+            let grandTotalCard = 0;
+            let grandTotalOffline = 0;
+
+            deliveryData.forEach(delivery => {
+                grandTotalOrders += delivery.orderCount;
+                grandTotalCash += delivery.totalCash;
+                grandTotalCard += delivery.totalCard;
+                grandTotalOffline += delivery.totalOffline;
+            });
+
+            // Mostrar resumo
+            document.getElementById('totalOrders').textContent = grandTotalOrders;
+            document.getElementById('totalCash').textContent = formatCurrency(grandTotalCash);
+            document.getElementById('totalCard').textContent = formatCurrency(grandTotalCard);
+            document.getElementById('grandTotal').textContent = formatCurrency(grandTotalOffline);
+            document.getElementById('summarySection').style.display = 'block';
+
+            // Renderizar por entregador
+            const container = document.getElementById('reportsContainer');
+            container.innerHTML = '';
+
+            // Ordenar entregadores por total a repassar (decrescente)
+            const sortedDeliveries = Array.from(deliveryData.values())
+                .sort((a, b) => b.totalOffline - a.totalOffline);
+
+            sortedDeliveries.forEach(delivery => {
+                const section = createDeliverySection(delivery);
+                container.appendChild(section);
+            });
+        }
+
+        // Criar seção do entregador
+        function createDeliverySection(delivery) {
+            const section = document.createElement('div');
+            section.className = 'delivery-section';
+
+            section.innerHTML = `
+                <div class="delivery-header">
+                    <div class="delivery-name">🏍️ ${delivery.name}</div>
+                    <div class="delivery-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Pedidos</span>
+                            <span class="stat-value">${delivery.orderCount}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Dinheiro</span>
+                            <span class="stat-value">${formatCurrency(delivery.totalCash)}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Cartão</span>
+                            <span class="stat-value">${formatCurrency(delivery.totalCard)}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Total</span>
+                            <span class="stat-value">${formatCurrency(delivery.totalOffline)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="orders-list">
+                    ${delivery.orders.map(order => createOrderItem(order)).join('')}
+                </div>
+                <div class="totals-section">
+                    <div class="totals-grid">
+                        <div class="total-card">
+                            <div class="total-label">💰 Dinheiro a Entregar</div>
+                            <div class="total-value cash-value">${formatCurrency(delivery.totalCash)}</div>
+                        </div>
+                        <div class="total-card">
+                            <div class="total-label">💳 Cartão a Entregar</div>
+                            <div class="total-value card-value">${formatCurrency(delivery.totalCard)}</div>
+                        </div>
+                        <div class="total-card">
+                            <div class="total-label">💵 Total a Repassar</div>
+                            <div class="total-value total-value-main">${formatCurrency(delivery.totalOffline)}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            return section;
+        }
+
+        // Criar item do pedido
+        function createOrderItem(order) {
+            const concludedTime = new Date(order.concludedAt).toLocaleString('pt-BR');
+            const paymentClass = order.paymentInfo.isOffline ? 'payment-offline' : 'payment-online';
+            const paymentStatus = order.paymentInfo.isOffline ? '🔴 Cobrar na Entrega' : '🟢 Já Pago';
+
+            return `
+                <div class="order-item">
+                    <div class="order-id">#${order.displayId}</div>
+                    <div class="order-info">
+                        <div class="customer-name">${order.customerName}</div>
+                        <div class="order-time">Concluído: ${concludedTime}</div>
+                    </div>
+                    <div class="payment-info">
+                        <div class="payment-method">${order.paymentInfo.mainPaymentMethod}</div>
+                        <div class="payment-status ${paymentClass}">${paymentStatus}</div>
+                    </div>
+                    <div class="order-total">${formatCurrency(order.total)}</div>
+                </div>
+            `;
+        }
+
+        // Obter label do método de pagamento
+        function getPaymentMethodLabel(payment) {
+            if (!payment) return 'N/A';
+            
+            const methodMap = {
+                'CASH': 'Dinheiro',
+                'CREDIT': 'Cartão de Crédito',
+                'DEBIT': 'Cartão de Débito',
+                'PIX': 'PIX',
+                'MEAL_VOUCHER': 'Vale Refeição',
+                'FOOD_VOUCHER': 'Vale Alimentação',
+                'GIFT_CARD': 'Gift Card',
+                'DIGITAL_WALLET': 'Carteira Digital'
+            };
+            
+            let method = payment.method || '';
+            if (method.includes('/')) {
+                method = method.split('/')[0].trim();
+            }
+            
+            let label = methodMap[method] || method || 'N/A';
+            
+            if (payment.card?.brand && payment.card.brand !== 'PIX') {
+                label += ` (${payment.card.brand})`;
+            }
+            
+            return label;
+        }
+
+        // Formatar moeda
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value || 0);
+        }
+
+        // Tornar função global
+        window.generateReport = generateReport;
+    </script>
+</body>
+</html>
