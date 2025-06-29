@@ -1506,6 +1506,41 @@ function updateUserLocation(position) {
     .addTo(deliveryMap);
 
     console.log('✅ Marcador de localização atualizado');
+
+// Enviar localização para Firebase para o mapa principal
+saveLocationToFirebase(position);
+}
+
+// Enviar localização para Firebase
+async function saveLocationToFirebase(position) {
+    if (!userDeliveryId || !currentUser) return;
+
+    try {
+        // Importar funções do Firebase
+        const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        
+        const locationData = {
+            deliveryId: userDeliveryId,
+            deliveryName: currentUser.email.split('@')[0], // Nome baseado no email
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            heading: position.coords.heading || null,
+            speed: position.coords.speed || null,
+            timestamp: new Date().toISOString(),
+            updatedAt: serverTimestamp(),
+            isActive: true
+        };
+        
+        // Salvar na coleção deliveryLocations
+        const docRef = doc(window.firebaseDb, 'deliveryLocations', userDeliveryId);
+        await setDoc(docRef, locationData);
+        
+        console.log('📍 Localização enviada para Firebase');
+        
+    } catch (error) {
+        console.error('❌ Erro ao salvar localização:', error);
+    }
 }
 
 // Parar rastreamento de localização
