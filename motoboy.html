@@ -1339,8 +1339,13 @@ function resetMapRotation() {
 
 // Aplicar rotação
 function applyRotation() {
-    const mapDiv = deliveryMap.getContainer();
-    mapDiv.style.transform = `rotate(${mapRotation}deg)`;
+    // Aplicar rotação apenas no conteúdo do mapa, não no container
+    const mapPane = deliveryMap.getPane('mapPane');
+    if (mapPane) {
+        mapPane.style.transform = `rotate(${mapRotation}deg)`;
+        mapPane.style.transformOrigin = 'center center';
+    }
+    
     console.log(`🔄 Mapa rotacionado: ${mapRotation}°`);
 }
 
