@@ -1021,6 +1021,47 @@
                 flex-direction: column;
             }
         }
+
+        /* Marcadores de motoboys */
+.delivery-marker {
+    width: 35px;
+    height: 45px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.delivery-helmet {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 3px solid white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.delivery-status-badge {
+    width: 20px;
+    height: 15px;
+    border-radius: 4px;
+    margin-top: -5px;
+    border: 2px solid white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    color: white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.delivery-available { background: #10b981; }
+.delivery-busy { background: #ef4444; }
+.delivery-helmet-icon { background: #3b82f6; color: white; }
     </style>
 </head>
 <body>
@@ -1218,6 +1259,9 @@ let deliveryMap = null;
 let mapMarkers = new Map();
 let selectedOrders = new Set();
 let deliveryAssignments = new Map(); // orderId -> deliveryInfo
+let deliveryLocations = new Map(); // deliveryId -> locationInfo
+let unsubscribeLocations = null; // Para gerenciar listener de localizações
+let deliveryMarkers = new Map(); // deliveryId -> marker
 let unsubscribeAssignments = null; // Para gerenciar o listener do Firebase
 
         // Coordenadas da loja
@@ -2739,7 +2783,12 @@ let unsubscribeAssignments = null; // Para gerenciar o listener do Firebase
                     addOrderMarkerToMap(order);
                 }
             });
+            // Carregar localizações dos motoboys também
+deliveryLocations.forEach((locationData, deliveryId) => {
+    updateDeliveryMarker(deliveryId, locationData);
+});
         }
+
         
         // Adicionar pedido à lista lateral
         function addOrderToSidebar(order) {
@@ -3145,6 +3194,132 @@ async function setupDeliveryAssignmentsListener() {
         console.error('❌ Erro ao configurar listener de assignments:', error);
     }
 }
+
+        // Configurar listener para localizações dos motoboys
+async function setupDeliveryLocationsListener() {
+    if (unsubscribeLocations) {
+        unsubscribeLocations();
+    }
+
+    try {
+        console.log('🏍️ Configurando listener de localizações dos motoboys...');
+        
+        const { collection, onSnapshot } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        
+        const locationsRef = collection(window.firebaseDb, 'deliveryLocations');
+        
+        unsubscribeLocations = onSnapshot(locationsRef, (snapshot) => {
+            console.log(`🏍️ Atualizações de localização: ${snapshot.size} motoboys`);
+            
+            snapshot.docChanges().forEach((change) => {
+                const data = change.doc.data();
+                const deliveryId = change.doc.id;
+                
+                if (change.type === 'added' || change.type === 'modified') {
+                    // Verificar se localização é recente (últimos 30 segundos)
+                    const locationTime = new Date(data.timestamp);
+                    const now = new Date();
+                    const ageInSeconds = (now - locationTime) / 1000;
+                    
+                    if (ageInSeconds <= 30 && data.isActive) {
+                        deliveryLocations.set(deliveryId, data);
+                        console.log(`📍 Localização atualizada: ${data.deliveryName}`);
+                        
+                        // Atualizar marcador no mapa se estiver aberto
+                        if (deliveryMap) {
+                            updateDeliveryMarker(deliveryId, data);
+                        }
+                    }
+                } else if (change.type === 'removed') {
+                    deliveryLocations.delete(deliveryId);
+                    removeDeliveryMarker(deliveryId);
+                }
+            });
+            
+        }, (error) => {
+            console.error('❌ Erro no listener de localizações:', error);
+        });
+        
+        console.log('✅ Listener de localizações configurado com sucesso');
+    } catch (error) {
+        console.error('❌ Erro ao configurar listener de localizações:', error);
+    }
+}
+
+// Atualizar marcador do motoboy no mapa
+function updateDeliveryMarker(deliveryId, locationData) {
+    if (!deliveryMap) return;
+    
+    // Remover marcador anterior se existir
+    if (deliveryMarkers.has(deliveryId)) {
+        deliveryMap.removeLayer(deliveryMarkers.get(deliveryId));
+    }
+    
+    // Determinar se motoboy está ocupado
+    const isDeliveryBusy = isDeliveryBusyByLocation(deliveryId);
+    const statusClass = isDeliveryBusy ? 'delivery-busy' : 'delivery-available';
+    const statusText = isDeliveryBusy ? '🔴' : '🟢';
+    
+    // Obter iniciais do nome
+    const name = locationData.deliveryName || deliveryId;
+    const initials = name.substring(0, 2).toUpperCase();
+    
+    // Criar marcador customizado
+    const markerIcon = L.divIcon({
+        html: `
+            <div class="delivery-marker">
+                <div class="delivery-helmet delivery-helmet-icon">🏍️</div>
+                <div class="delivery-status-badge ${statusClass}">${initials}</div>
+            </div>
+        `,
+        iconSize: [35, 45],
+        iconAnchor: [17.5, 42],
+        className: 'delivery-location-marker'
+    });
+    
+    // Criar popup informativo
+    const popupContent = `
+        <div style="text-align: center; min-width: 150px;">
+            <h4>🏍️ ${locationData.deliveryName}</h4>
+            <p><strong>Status:</strong> ${isDeliveryBusy ? '🔴 Ocupado' : '🟢 Disponível'}</p>
+            <p><strong>Precisão:</strong> ±${Math.round(locationData.accuracy)}m</p>
+            <p><strong>Atualizado:</strong> ${new Date(locationData.timestamp).toLocaleTimeString('pt-BR')}</p>
+            ${locationData.speed ? `<p><strong>Velocidade:</strong> ${Math.round(locationData.speed * 3.6)} km/h</p>` : ''}
+        </div>
+    `;
+    
+    // Adicionar marcador ao mapa
+    const marker = L.marker([locationData.latitude, locationData.longitude], { 
+        icon: markerIcon,
+        zIndexOffset: 500 // Ficar acima dos pedidos mas abaixo da localização própria
+    })
+    .bindPopup(popupContent)
+    .addTo(deliveryMap);
+    
+    deliveryMarkers.set(deliveryId, marker);
+    
+    console.log(`🏍️ Marcador atualizado: ${locationData.deliveryName} (${statusText})`);
+}
+
+// Verificar se motoboy está ocupado
+function isDeliveryBusyByLocation(deliveryId) {
+    for (const assignment of deliveryAssignments.values()) {
+        if (assignment.deliveryId === deliveryId && 
+            (assignment.status === 'sent' || assignment.status === 'accepted' || assignment.status === 'dispatched')) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Remover marcador do motoboy
+function removeDeliveryMarker(deliveryId) {
+    if (deliveryMarkers.has(deliveryId) && deliveryMap) {
+        deliveryMap.removeLayer(deliveryMarkers.get(deliveryId));
+        deliveryMarkers.delete(deliveryId);
+        console.log(`🗑️ Marcador removido: ${deliveryId}`);
+    }
+}
         
         // Salvar atribuições no Firebase (usando Web SDK)
         async function saveDeliveryAssignments(orderIds, deliveryId, deliveryName) {
@@ -3270,10 +3445,11 @@ async function setupDeliveryAssignmentsListener() {
             console.log('🚨 Chamando renderOrders...');
             renderOrders();
             
-            // Configurar listener do Firebase (independente da autenticação)
+// Configurar listeners do Firebase (independente da autenticação)
 setTimeout(() => {
-    console.log('🚨 Configurando listener do Firebase...');
+    console.log('🚨 Configurando listeners do Firebase...');
     setupDeliveryAssignmentsListener();
+    setupDeliveryLocationsListener();
 }, 500);
 
 // Iniciar autenticação
