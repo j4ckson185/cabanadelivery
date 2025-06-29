@@ -2869,15 +2869,21 @@ deliveryLocations.forEach((locationData, deliveryId) => {
             const orderTotal = formatCurrency(order.total?.orderAmount || 0);
             const statusLabel = getStatusLabel(order.orderStatus);
             
-            let popupContent = `
-                <div style="min-width: 200px;">
-                    <h4>📦 Pedido #${order.displayId}</h4>
-                    <p><strong>👤 Cliente:</strong> ${customerName}</p>
-                    <p><strong>💰 Total:</strong> ${orderTotal}</p>
-                    <p><strong>📍 Status:</strong> ${statusLabel}</p>
-                    <p><strong>📍 Endereço:</strong><br>
-                    ${address.formattedAddress || `${address.streetName || ''} ${address.streetNumber || ''}`}</p>
-            `;
+let popupContent = `
+    <div style="min-width: 200px;">
+        <h4>📦 Pedido #${order.displayId}</h4>
+        <p><strong>👤 Cliente:</strong> ${customerName}</p>
+        <p><strong>💰 Total:</strong> ${orderTotal}</p>
+        <p><strong>📍 Status:</strong> ${statusLabel}</p>
+        <p><strong>📍 Endereço:</strong><br>
+        ${address.formattedAddress || `${address.streetName || ''} ${address.streetNumber || ''}`}</p>
+        ${delivery ? `<p><strong>🚚 Entregador:</strong> ${delivery.deliveryName}</p>` : ''}
+        <button onclick="showOrderActionsModal('${order.id}')" 
+                style="margin-top: 10px; padding: 8px 16px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
+            ⚙️ Ações do Pedido
+        </button>
+    </div>
+`;
             
             if (delivery) {
                 popupContent += `<p><strong>🚚 Entregador:</strong> ${delivery.deliveryName}</p>`;
@@ -3472,6 +3478,117 @@ async function confirmMapCancellation(orderId) {
         showToast('Erro ao cancelar pedido', 'error');
     }
 }
+
+// Remover pedido do motoboy (deletar assignment)
+async function removeOrderFromDelivery(orderId) {
+    const order = orders.get(orderId);
+    const assignment = deliveryAssignments.get(orderId);
+    
+    if (!order || !assignment) {
+        showToast('Pedido ou atribuição não encontrada', 'error');
+        return;
+    }
+
+    // Confirmar remoção
+    const confirmed = confirm(`Remover pedido #${order.displayId} do motoboy ${assignment.deliveryName}?\n\n⚠️ Esta ação irá:\n- Remover da tela do motoboy\n- Remover do relatório\n- Remover do mapa\n\nContinuar?`);
+    
+    if (!confirmed) return;
+
+    try {
+        console.log(`🗑️ Removendo assignment do pedido ${orderId} do motoboy ${assignment.deliveryName}`);
+        
+        // Importar função do Firebase
+        const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        
+        // Deletar assignment do Firebase
+        const docRef = doc(window.firebaseDb, 'deliveryAssignments', orderId);
+        await deleteDoc(docRef);
+        
+        console.log('✅ Assignment removido do Firebase');
+        showToast(`✅ Pedido #${order.displayId} removido do motoboy ${assignment.deliveryName}`, 'success');
+        
+        // Remover localmente também
+        deliveryAssignments.delete(orderId);
+        
+        // Atualizar mapa
+        setTimeout(() => {
+            loadMapOrders();
+        }, 500);
+        
+    } catch (error) {
+        console.error('❌ Erro ao remover assignment:', error);
+        showToast('Erro ao remover pedido do motoboy', 'error');
+    }
+}
+
+// Modal de opções para pedidos atribuídos
+function showOrderActionsModal(orderId) {
+    const order = orders.get(orderId);
+    const assignment = deliveryAssignments.get(orderId);
+    
+    if (!order) {
+        showToast('Pedido não encontrado', 'error');
+        return;
+    }
+
+    // Criar modal de ações
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.id = 'orderActionsModal';
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                <div class="modal-title">⚙️ Ações do Pedido</div>
+                <div class="modal-subtitle">Pedido #${order.displayId}</div>
+                <button class="close-btn" onclick="closeOrderActionsModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 1rem; padding: 1rem; background: #f8fafc; border-radius: 8px;">
+                    <div style="font-weight: 600; color: #1e293b;">📦 ${order.displayId}</div>
+                    <div style="font-size: 0.875rem; color: #64748b;">Cliente: ${order.customer?.name || 'N/A'}</div>
+                    <div style="font-size: 0.875rem; color: #64748b;">Total: ${formatCurrency(order.total?.orderAmount || 0)}</div>
+                    ${assignment ? `<div style="font-size: 0.875rem; color: #8b5cf6; font-weight: 500;">🏍️ Atribuído para: ${assignment.deliveryName}</div>` : ''}
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <button onclick="cancelOrderFromMap('${orderId}')" 
+                            style="width: 100%; padding: 1rem; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        ❌ Cancelar Pedido (API)
+                    </button>
+                    
+                    ${assignment ? `
+                    <button onclick="removeOrderFromDelivery('${orderId}')" 
+                            style="width: 100%; padding: 1rem; background: #f59e0b; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        🗑️ Remover do Motoboy
+                    </button>
+                    ` : ''}
+                    
+                    <button onclick="openOrderModal('${orderId}')" 
+                            style="width: 100%; padding: 1rem; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        👁️ Ver Detalhes
+                    </button>
+                    
+                    <button onclick="closeOrderActionsModal()" 
+                            style="width: 100%; padding: 1rem; background: #6b7280; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Fechar modal de ações do pedido
+function closeOrderActionsModal() {
+    const modal = document.getElementById('orderActionsModal');
+    if (modal) {
+        modal.remove();
+    }
+}
         
         // Salvar atribuições no Firebase (usando Web SDK)
         async function saveDeliveryAssignments(orderIds, deliveryId, deliveryName) {
@@ -3635,6 +3752,9 @@ window.addEventListener('beforeunload', () => {
         window.closeMapModal = closeMapModal;
         window.closeDeliverySelectionModal = closeDeliverySelectionModal;
         window.assignToDelivery = assignToDelivery;
+        window.removeOrderFromDelivery = removeOrderFromDelivery;
+        window.showOrderActionsModal = showOrderActionsModal;
+        window.closeOrderActionsModal = closeOrderActionsModal;
     </script>
 </body>
 </html>
