@@ -230,7 +230,7 @@
             padding: 0.5rem;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             position: relative;
-            z-index: 50; /* Sempre acima do mapa */
+            z-index: 50;
         }
 
         .nav-tab {
@@ -498,7 +498,7 @@
             overflow-y: auto;
         }
 
-        /* Map Section */
+        /* Map Section - OTIMIZADO PARA MOBILE */
         .map-container {
             background: white;
             border-radius: 0;
@@ -506,11 +506,11 @@
             box-shadow: none;
             border: none;
             position: fixed;
-            top: 140px; /* Altura do cabeçalho + abas */
+            top: 140px;
             left: 0;
             right: 0;
             bottom: 0;
-            z-index: 40; /* Menor que as abas */
+            z-index: 40;
         }
 
         .map-header {
@@ -521,12 +521,94 @@
             font-size: 1.125rem;
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 0.5rem;
         }
 
+        .map-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .compass-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .compass-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .location-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .location-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* MAPA OTIMIZADO - SEM ROTAÇÃO PROBLEMÁTICA */
         #deliveryMap {
             width: 100%;
-            height: calc(100vh - 200px); /* Tela inteira menos cabeçalho, abas e header do mapa */
+            height: calc(100vh - 200px);
+            touch-action: pan-x pan-y pinch-zoom;
+        }
+
+        /* Otimizações para Leaflet no mobile */
+        .leaflet-container {
+            font-family: inherit;
+            touch-action: pan-x pan-y pinch-zoom;
+        }
+
+        .leaflet-control-container {
+            pointer-events: auto;
+        }
+
+        .leaflet-control-zoom {
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .leaflet-control-zoom a {
+            background-color: white;
+            border: none;
+            color: #374151;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background-color: #f3f4f6;
+        }
+
+        /* Tiles otimizados */
+        .leaflet-tile {
+            max-width: none !important;
+            max-height: none !important;
+        }
+
+        .leaflet-zoom-animated {
+            transition: transform 0.25s cubic-bezier(0, 0, 0.25, 1);
         }
 
         .map-legend {
@@ -715,6 +797,65 @@
             background: #7c3aed;
         }
 
+        /* Marcador de localização do usuário - MELHORADO */
+        .user-location-marker {
+            width: 20px;
+            height: 20px;
+            background: #3b82f6;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+            animation: pulse-location 2s infinite;
+            position: relative;
+        }
+
+        .user-location-marker::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+        }
+
+        @keyframes pulse-location {
+            0% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
+        }
+
+        /* Toast de notificação de som */
+        .sound-toast {
+            position: fixed;
+            top: 90px;
+            right: 2rem;
+            background: #10b981;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 2000;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+
+        .sound-toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .main-content {
@@ -736,7 +877,7 @@
             }
 
             .map-container {
-                top: 130px; /* Cabeçalho + abas no mobile */
+                top: 130px;
             }
 
             #deliveryMap {
@@ -757,6 +898,16 @@
 
             .reports-content {
                 width: 95%;
+            }
+
+            .map-header {
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: stretch;
+            }
+
+            .map-controls {
+                justify-content: center;
             }
         }
 
@@ -788,118 +939,6 @@
                 height: calc(100vh - 180px);
             }
         }
-
-        /* Marcador de localização do usuário */
-.user-location-marker {
-    width: 20px;
-    height: 20px;
-    background: #3b82f6;
-    border: 3px solid white;
-    border-radius: 50%;
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
-    animation: pulse-location 2s infinite;
-    position: relative;
-}
-
-.user-location-marker::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 8px;
-    height: 8px;
-    background: white;
-    border-radius: 50%;
-}
-
-@keyframes pulse-location {
-    0% {
-        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-    }
-}
-
-        /* Controles de rotação do mapa - versão simplificada */
-.rotation-controls {
-    position: absolute;
-    top: 60px;
-    right: 10px;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    max-width: 35px;
-}
-
-.rotation-btn {
-    width: 35px;
-    height: 35px;
-    background: white;
-    border: 2px solid rgba(0,0,0,0.2);
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
-    color: #333;
-    box-shadow: 0 1px 5px rgba(0,0,0,0.65);
-    user-select: none;
-    transition: all 0.2s ease;
-}
-
-.rotation-btn:hover {
-    background: #f4f4f4;
-}
-
-.rotation-btn:active {
-    background: #e4e4e4;
-}
-
-/* Permitir rotação do mapa - versão simplificada */
-.leaflet-container {
-    touch-action: pan-x pan-y pinch-zoom !important;
-}
-
-/* Otimizações básicas para tiles do mapa */
-.leaflet-tile {
-    image-rendering: auto; /* ✅ Mudado para auto para melhor compatibilidade */
-}
-
-/* Suavizar animações de zoom */
-.leaflet-zoom-animated {
-    transition: transform 0.25s ease-out;
-}
-
-/* Toast de notificação de som */
-.sound-toast {
-    position: fixed;
-    top: 90px;
-    right: 2rem;
-    background: #10b981;
-    color: white;
-    padding: 1rem 1.5rem;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 2000;
-    opacity: 0;
-    transform: translateX(100%);
-    transition: all 0.3s ease;
-}
-
-.sound-toast.show {
-    opacity: 1;
-    transform: translateX(0);
-}
     </style>
 </head>
 <body>
@@ -973,7 +1012,15 @@
             <div id="mapaTab" class="tab-content">
                 <div class="map-container">
                     <div class="map-header">
-                        🗺️ Mapa de Entregas
+                        <div>🗺️ Mapa de Entregas</div>
+                        <div class="map-controls">
+                            <button class="compass-btn" onclick="centerMapOnUser()" title="Centralizar na minha localização">
+                                🧭
+                            </button>
+                            <button class="location-btn" onclick="toggleLocationTracking()">
+                                📍 GPS
+                            </button>
+                        </div>
                     </div>
                     <div id="deliveryMap"></div>
                     <div class="map-legend">
@@ -985,6 +1032,10 @@
                         <div class="legend-item">
                             <div class="legend-color" style="background: #06b6d4;"></div>
                             <span>Despachado</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #3b82f6;"></div>
+                            <span>Minha Localização</span>
                         </div>
                         <div class="legend-item">
                             <div class="legend-color" style="background: #ef4444;"></div>
@@ -1061,9 +1112,13 @@
         let unsubscribeAssignments = null;
         let currentTab = 'pedidos';
 
-        // Variáveis do mapa
+        // Variáveis do mapa - SIMPLIFICADAS
         let deliveryMap = null;
         let mapMarkers = new Map();
+        let userLocationMarker = null;
+        let watchId = null;
+        let locationTracking = false;
+        let lastKnownPosition = null;
 
         // Coordenadas da loja
         const STORE_LOCATION = {
@@ -1233,15 +1288,18 @@
             });
         }
 
-        // Trocar abas - versão simplificada
+        // Trocar abas - OTIMIZADO
         function switchTab(tabName) {
             // Atualizar botões de navegação
             document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
 
-            // Parar localização se sair da aba do mapa
+            // Gerenciar rastreamento de localização
             if (currentTab === 'mapa' && tabName !== 'mapa') {
-                stopLocationTracking();
+                console.log('📱 Saindo da aba do mapa - pausando rastreamento');
+                // Não parar completamente, apenas pausar para economizar bateria
+            } else if (currentTab !== 'mapa' && tabName === 'mapa') {
+                console.log('📱 Entrando na aba do mapa - retomando rastreamento');
             }
             
             // Esconder todas as abas
@@ -1265,55 +1323,52 @@
             }
         }
 
-        // ============ FUNCIONALIDADES DO MAPA ============
+        // ============ MAPA OTIMIZADO PARA MOBILE ============
 
- // Variáveis para rotação
-let mapRotation = 0;
-let isRotating = false;
-let lastTouchAngle = 0;
-
-        // Inicializar mapa
+        // Inicializar mapa - VERSÃO OTIMIZADA SEM ROTAÇÃO
         function initializeMap() {
             if (deliveryMap) {
                 return; // Mapa já inicializado
             }
             
-            console.log('🗺️ Inicializando mapa do entregador...');
+            console.log('🗺️ Inicializando mapa otimizado para mobile...');
             
-            // Configurações mais simples para evitar conflitos
+            // Opções otimizadas para mobile
             const mapOptions = {
-                preferCanvas: true,
+                preferCanvas: false, // Canvas pode causar problemas no mobile
                 zoomControl: true,
                 attributionControl: true,
-                fadeAnimation: true, // ✅ Reabilitado para suavizar carregamento
+                fadeAnimation: true,
                 zoomAnimation: true,
                 zoomAnimationThreshold: 4,
-                wheelDebounceTime: 40, // ✅ Reduzido para mais responsivo
-                wheelPxPerZoomLevel: 60
+                wheelDebounceTime: 60,
+                wheelPxPerZoomLevel: 60,
+                tap: true,
+                tapTolerance: 15,
+                bounceAtZoomLimits: true,
+                maxBoundsViscosity: 0.8
             };
             
             // Criar mapa centrado na loja
             deliveryMap = L.map('deliveryMap', mapOptions).setView([STORE_LOCATION.lat, STORE_LOCATION.lng], 14);
             
-            // Configurações mais conservadoras do tileLayer
+            // Tiles otimizados para mobile
             const tileLayerOptions = {
                 attribution: '© OpenStreetMap contributors',
                 maxZoom: 18,
                 minZoom: 12,
                 tileSize: 256,
                 zoomOffset: 0,
-                keepBuffer: 2, // ✅ Reduzido para evitar conflitos
-                updateWhenIdle: true, // ✅ Mudado para true para estabilidade
-                updateWhenZooming: false, // ✅ Desabilitado para evitar conflitos
-                updateInterval: 200 // ✅ Aumentado para estabilidade
+                keepBuffer: 4, // Buffer adequado para mobile
+                updateWhenIdle: false, // Atualização contínua para melhor UX
+                updateWhenZooming: true, // Atualizar durante zoom
+                updateInterval: 100, // Responsivo
+                crossOrigin: true
             };
             
-            // Adicionar tiles do OpenStreetMap
+            // Adicionar tiles
             const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', tileLayerOptions);
             tileLayer.addTo(deliveryMap);
-            
-            // ✅ REMOVIDO: Listeners problemáticos que interferiam com zoom
-            // Manter apenas listeners essenciais
             
             // Adicionar marcador da loja
             const storeIcon = L.divIcon({
@@ -1338,289 +1393,202 @@ let lastTouchAngle = 0;
                 .bindPopup(`<b>🏪 Cabana Delivery</b><br>${STORE_LOCATION.address}`)
                 .addTo(deliveryMap);
             
-            // Definir limites do mapa (6km ao redor da loja)
+            // Definir limites do mapa
             const bounds = L.latLngBounds(
-                [STORE_LOCATION.lat - 0.054, STORE_LOCATION.lng - 0.054], // ~6km
-                [STORE_LOCATION.lat + 0.054, STORE_LOCATION.lng + 0.054]  // ~6km
+                [STORE_LOCATION.lat - 0.054, STORE_LOCATION.lng - 0.054],
+                [STORE_LOCATION.lat + 0.054, STORE_LOCATION.lng + 0.054]
             );
             deliveryMap.setMaxBounds(bounds);
             deliveryMap.setMinZoom(12);
             deliveryMap.setMaxZoom(18);
 
-           // Inicializar localização do usuário após o mapa estar pronto
-           setTimeout(() => {
-           initializeUserLocation();
-           }, 1000);
-
-            addRotationControls();
-            addSimpleTouchRotation(); // ✅ Versão simplificada que funciona
+            // Inicializar localização automaticamente
+            setTimeout(() => {
+                initializeUserLocation();
+            }, 1000);
             
             console.log('✅ Mapa inicializado com sucesso');
         }
 
-        // Função utilitária de debounce - versão simplificada
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-
-        // Adicionar controles de rotação - versão simplificada
-function addRotationControls() {
-    const mapContainer = document.getElementById('deliveryMap');
-    
-    const controlsDiv = document.createElement('div');
-    controlsDiv.className = 'rotation-controls';
-    
-    // Botão rotacionar horário
-    const rotateRightBtn = document.createElement('div');
-    rotateRightBtn.className = 'rotation-btn';
-    rotateRightBtn.innerHTML = '↻';
-    rotateRightBtn.title = 'Girar à direita';
-    rotateRightBtn.onclick = () => rotateMap(15);
-    
-    // Botão rotacionar anti-horário  
-    const rotateLeftBtn = document.createElement('div');
-    rotateLeftBtn.className = 'rotation-btn';
-    rotateLeftBtn.innerHTML = '↺';
-    rotateLeftBtn.title = 'Girar à esquerda';
-    rotateLeftBtn.onclick = () => rotateMap(-15);
-    
-    // Botão resetar rotação
-    const resetBtn = document.createElement('div');
-    resetBtn.className = 'rotation-btn';
-    resetBtn.innerHTML = '⊕';
-    resetBtn.title = 'Resetar rotação';
-    resetBtn.onclick = () => resetMapRotation();
-    
-    controlsDiv.appendChild(rotateRightBtn);
-    controlsDiv.appendChild(rotateLeftBtn);
-    controlsDiv.appendChild(resetBtn);
-    
-    mapContainer.appendChild(controlsDiv);
-}
-
-// Rotacionar mapa - versão simplificada
-function rotateMap(degrees) {
-    mapRotation += degrees;
-    applyRotation();
-}
-
-// Resetar rotação - versão simplificada
-function resetMapRotation() {
-    mapRotation = 0;
-    isRotating = false;
-    applyRotation();
-}
-
-// Aplicar rotação - versão simplificada
-function applyRotation() {
-    const mapPane = deliveryMap.getPane('mapPane');
-    if (mapPane) {
-        // Aplicar rotação apenas no conteúdo interno do mapa
-        mapPane.style.transform = `rotate(${mapRotation}deg)`;
-        mapPane.style.transformOrigin = 'center center';
-    }
-    
-    console.log(`🔄 Mapa rotacionado: ${mapRotation}°`);
-}
-
-// Versão simplificada da rotação por touch que FUNCIONA
-function addSimpleTouchRotation() {
-    const mapContainer = deliveryMap.getContainer();
-    let initialAngle = 0;
-    let isRotatingNow = false;
-    
-    mapContainer.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 2) {
-            // Capturar ângulo inicial
-            initialAngle = getTouchAngle(e.touches[0], e.touches[1]);
-            isRotatingNow = false; // Resetar flag
-        }
-    }, { passive: true });
-    
-    mapContainer.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 2) {
-            const currentAngle = getTouchAngle(e.touches[0], e.touches[1]);
-            const angleDiff = currentAngle - initialAngle;
-            
-            // Se movimento angular significativo, é rotação
-            if (Math.abs(angleDiff) > 10) {
-                isRotatingNow = true;
-                isRotating = true;
-                
-                // Aplicar rotação suave
-                mapRotation += angleDiff * 0.5;
-                applyRotation();
-                
-                initialAngle = currentAngle;
-                
-                // Prevenir zoom apenas se for rotação confirmada
-                e.preventDefault();
+        // Inicializar localização do usuário - OTIMIZADA
+        function initializeUserLocation() {
+            if (!navigator.geolocation) {
+                console.log('⚠️ Geolocalização não suportada');
+                showToast('GPS não disponível neste dispositivo', 'error');
+                return;
             }
-            // Se movimento pequeno, deixar ser zoom natural
+
+            console.log('📍 Iniciando rastreamento otimizado...');
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 30000 // Cache por 30 segundos
+            };
+
+            // Obter localização inicial
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    console.log('📍 Localização inicial obtida');
+                    updateUserLocation(position);
+                    locationTracking = true;
+                    
+                    // Iniciar rastreamento contínuo apenas se estiver na aba do mapa
+                    if (currentTab === 'mapa') {
+                        startLocationTracking();
+                    }
+                },
+                (error) => {
+                    console.warn('⚠️ Erro na localização inicial:', error.message);
+                    showToast('Erro ao obter localização: ' + error.message, 'error');
+                },
+                options
+            );
         }
-    }, { passive: false });
-    
-    mapContainer.addEventListener('touchend', (e) => {
-        if (e.touches.length < 2) {
-            isRotatingNow = false;
-            isRotating = false;
+
+        // Iniciar rastreamento contínuo
+        function startLocationTracking() {
+            if (watchId) return; // Já está rastreando
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 10000
+            };
+
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    updateUserLocation(position);
+                },
+                (error) => {
+                    console.warn('⚠️ Erro no rastreamento:', error.message);
+                },
+                options
+            );
+
+            console.log('📍 Rastreamento contínuo iniciado');
         }
-    }, { passive: true });
-}
 
-// Função getTouchAngle simplificada
-function getTouchAngle(touch1, touch2) {
-    const dx = touch2.clientX - touch1.clientX;
-    const dy = touch2.clientY - touch1.clientY;
-    return Math.atan2(dy, dx) * (180 / Math.PI);
-}
+        // Parar rastreamento
+        function stopLocationTracking() {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+                console.log('🛑 Rastreamento parado');
+            }
+        }
 
-        // Variáveis para localização do usuário
-let userLocationMarker = null;
-let watchId = null;
+        // Alternar rastreamento
+        function toggleLocationTracking() {
+            if (locationTracking) {
+                stopLocationTracking();
+                locationTracking = false;
+                showToast('📍 Rastreamento pausado', 'info');
+            } else {
+                initializeUserLocation();
+                showToast('📍 Rastreamento ativado', 'success');
+            }
+        }
 
-// Inicializar localização do usuário - versão simplificada
-function initializeUserLocation() {
-    if (!navigator.geolocation) {
-        console.log('⚠️ Geolocalização não suportada pelo navegador');
-        return;
-    }
+        // Centralizar mapa no usuário
+        function centerMapOnUser() {
+            if (!deliveryMap || !lastKnownPosition) {
+                showToast('📍 Localização não disponível', 'error');
+                return;
+            }
 
-    console.log('📍 Iniciando rastreamento de localização...');
+            const lat = lastKnownPosition.coords.latitude;
+            const lng = lastKnownPosition.coords.longitude;
+            
+            deliveryMap.setView([lat, lng], Math.max(deliveryMap.getZoom(), 16), {
+                animate: true,
+                duration: 0.5
+            });
 
-    // Opções básicas para localização
-    const options = {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 10000
-    };
+            if (userLocationMarker) {
+                userLocationMarker.openPopup();
+            }
 
-    // Obter localização inicial
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            console.log('📍 Localização inicial obtida');
-            updateUserLocation(position);
-        },
-        (error) => {
-            console.warn('⚠️ Erro ao obter localização:', error.message);
-        },
-        options
-    );
+            showToast('📍 Mapa centralizado na sua localização', 'success');
+        }
 
-    // Rastrear localização continuamente
-    watchId = navigator.geolocation.watchPosition(
-        (position) => {
-            updateUserLocation(position);
-        },
-        (error) => {
-            console.warn('⚠️ Erro no rastreamento:', error.message);
-        },
-        options
-    );
-}
+        // Atualizar localização do usuário - OTIMIZADA
+        function updateUserLocation(position) {
+            if (!deliveryMap) return;
 
-// Atualizar marcador de localização do usuário - versão simplificada
-function updateUserLocation(position) {
-    if (!deliveryMap) return;
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
 
-    const lat = position.coords.latitude;
-    const lng = position.coords.longitude;
-    const accuracy = position.coords.accuracy;
+            console.log(`📍 Localização: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${Math.round(accuracy)}m)`);
 
-    console.log(`📍 Localização atualizada: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${Math.round(accuracy)}m)`);
+            lastKnownPosition = position;
 
-    // Remover marcador anterior se existir
-    if (userLocationMarker) {
-        deliveryMap.removeLayer(userLocationMarker);
-    }
+            // Remover marcador anterior
+            if (userLocationMarker) {
+                deliveryMap.removeLayer(userLocationMarker);
+            }
 
-    // Criar novo marcador de localização
-    const locationIcon = L.divIcon({
-        html: '<div class="user-location-marker"></div>',
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
-        className: 'user-location-icon'
-    });
+            // Criar novo marcador
+            const locationIcon = L.divIcon({
+                html: '<div class="user-location-marker"></div>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10],
+                className: 'user-location-icon'
+            });
 
-    // Adicionar marcador no mapa
-    userLocationMarker = L.marker([lat, lng], { 
-        icon: locationIcon,
-        zIndexOffset: 1000 // Ficar acima dos outros marcadores
-    })
-    .bindPopup(`
-        <div style="text-align: center;">
-            <div style="font-weight: 600; color: #3b82f6; margin-bottom: 0.5rem;">
-                📍 Sua Localização
-            </div>
-            <div style="font-size: 0.875rem; color: #64748b;">
-                Precisão: ±${Math.round(accuracy)}m
-            </div>
-        </div>
-    `)
-    .addTo(deliveryMap);
+            userLocationMarker = L.marker([lat, lng], { 
+                icon: locationIcon,
+                zIndexOffset: 1000
+            })
+            .bindPopup(`
+                <div style="text-align: center;">
+                    <div style="font-weight: 600; color: #3b82f6; margin-bottom: 0.5rem;">
+                        📍 Sua Localização
+                    </div>
+                    <div style="font-size: 0.875rem; color: #64748b;">
+                        Precisão: ±${Math.round(accuracy)}m
+                    </div>
+                    <button onclick="centerMapOnUser()" style="margin-top: 0.5rem; padding: 0.25rem 0.5rem; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
+                        🎯 Centralizar
+                    </button>
+                </div>
+            `)
+            .addTo(deliveryMap);
 
-    console.log('✅ Marcador de localização atualizado');
+            // Enviar para Firebase
+            saveLocationToFirebase(position);
+        }
 
-    // Enviar localização para Firebase
-    saveLocationToFirebase(position);
-}
+        // Enviar localização para Firebase
+        async function saveLocationToFirebase(position) {
+            if (!userDeliveryId || !currentUser) return;
 
-// Enviar localização para Firebase
-async function saveLocationToFirebase(position) {
-    if (!userDeliveryId || !currentUser) return;
+            try {
+                const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                
+                const locationData = {
+                    deliveryId: userDeliveryId,
+                    deliveryName: currentUser.email.split('@')[0],
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy,
+                    heading: position.coords.heading || null,
+                    speed: position.coords.speed || null,
+                    timestamp: new Date().toISOString(),
+                    updatedAt: serverTimestamp(),
+                    isActive: true
+                };
+                
+                const docRef = doc(window.firebaseDb, 'deliveryLocations', userDeliveryId);
+                await setDoc(docRef, locationData);
+                
+            } catch (error) {
+                console.error('❌ Erro ao salvar localização:', error);
+            }
+        }
 
-    try {
-        // Importar funções do Firebase
-        const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-        
-        const locationData = {
-            deliveryId: userDeliveryId,
-            deliveryName: currentUser.email.split('@')[0], // Nome baseado no email
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            heading: position.coords.heading || null,
-            speed: position.coords.speed || null,
-            timestamp: new Date().toISOString(),
-            updatedAt: serverTimestamp(),
-            isActive: true
-        };
-        
-        // Salvar na coleção deliveryLocations
-        const docRef = doc(window.firebaseDb, 'deliveryLocations', userDeliveryId);
-        await setDoc(docRef, locationData);
-        
-        console.log('📍 Localização enviada para Firebase');
-        
-    } catch (error) {
-        console.error('❌ Erro ao salvar localização:', error);
-    }
-}
-
-// Parar rastreamento de localização - versão simplificada
-function stopLocationTracking() {
-    if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-        console.log('🛑 Rastreamento de localização parado');
-    }
-
-    if (userLocationMarker && deliveryMap) {
-        deliveryMap.removeLayer(userLocationMarker);
-        userLocationMarker = null;
-        console.log('🗑️ Marcador de localização removido');
-    }
-}
-
-        // Carregar pedidos no mapa - versão simplificada
+        // Carregar pedidos no mapa
         function loadMapOrders() {
             if (!deliveryMap) {
                 console.log('🗺️ Mapa não inicializado ainda');
@@ -1652,20 +1620,12 @@ function stopLocationTracking() {
         function addOrderMarkerToMap(assignment) {
             const order = assignment.order;
             
-            console.log(`🔍 DEBUG Pedido ${order.displayId}:`, {
-                orderType: order.orderType,
-                hasDelivery: !!order.delivery,
-                hasDeliveryAddress: !!order.delivery?.deliveryAddress,
-                deliveryData: order.delivery,
-                orderKeys: Object.keys(order)
-            });
-            
-            // Verificar se é entrega e tem endereço - aceitar tanto DELIVERY quanto undefined (padrão é entrega)
+            // Verificar se é entrega e tem endereço
             const isDelivery = !order.orderType || order.orderType === 'DELIVERY';
             const hasAddress = order.delivery && order.delivery.deliveryAddress;
             
             if (!isDelivery || !hasAddress) {
-                console.log(`📍 Pedido ${order.displayId} - isDelivery: ${isDelivery}, hasAddress: ${hasAddress}`);
+                console.log(`📍 Pedido ${order.displayId} não é entrega ou sem endereço`);
                 return;
             }
             
@@ -1678,16 +1638,16 @@ function stopLocationTracking() {
             const lat = address.coordinates.latitude;
             const lng = address.coordinates.longitude;
             
-            // Verificar se está dentro dos limites de 6km
+            // Verificar se está dentro dos limites
             const distance = getDistance(STORE_LOCATION.lat, STORE_LOCATION.lng, lat, lng);
             if (distance > 6) {
-                console.warn(`📍 Pedido ${order.displayId} está muito longe (${distance.toFixed(1)}km)`);
+                console.warn(`📍 Pedido ${order.displayId} muito longe (${distance.toFixed(1)}km)`);
                 return;
             }
             
             const color = getMarkerColor(assignment.status);
             
-            // Marcador quadrado com número do pedido
+            // Marcador otimizado
             const markerIcon = L.divIcon({
                 html: `<div style="
                     background: ${color}; 
@@ -1720,7 +1680,7 @@ function stopLocationTracking() {
                     <p><strong>📍 Endereço:</strong><br>
                     ${address.formattedAddress || `${address.streetName || ''} ${address.streetNumber || ''}`}</p>
                     <button onclick="openOrderModal('${assignment.id}')" 
-                            style="margin-top: 10px; padding: 8px 16px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            style="margin-top: 10px; padding: 8px 16px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;">
                         Ver Detalhes
                     </button>
                 </div>
@@ -1760,122 +1720,120 @@ function stopLocationTracking() {
 
         // ============ NOTIFICAÇÕES SONORAS ============
 
-// Variáveis para áudio
-let audioContext = null;
-let userHasInteracted = false;
+        // Variáveis para áudio
+        let audioContext = null;
+        let userHasInteracted = false;
 
-// Inicializar sistema de áudio
-function initializeAudio() {
-    // Detectar primeira interação do usuário
-    document.addEventListener('click', enableAudio, { once: true });
-    document.addEventListener('touchstart', enableAudio, { once: true });
-}
+        // Inicializar sistema de áudio
+        function initializeAudio() {
+            // Detectar primeira interação do usuário
+            document.addEventListener('click', enableAudio, { once: true });
+            document.addEventListener('touchstart', enableAudio, { once: true });
+        }
 
-// Habilitar áudio após interação do usuário
-function enableAudio() {
-    userHasInteracted = true;
-    
-    try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        console.log('🔊 Sistema de áudio inicializado');
-    } catch (error) {
-        console.warn('⚠️ Erro ao inicializar áudio:', error);
-    }
-}
-
-// Tocar som de notificação
-function playNotificationSound() {
-    if (!audioContext || !userHasInteracted) {
-        console.log('⚠️ Áudio não disponível ainda - usuário precisa interagir primeiro');
-        return;
-    }
-
-    try {
-        // Gerar som de sino programaticamente
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        // Conectar nós
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        // Configurar som de sino (duas frequências)
-        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-        oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
-        
-        // Configurar volume (envelope)
-        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-        
-        // Tocar som
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
-        
-        console.log('🔔 Som de notificação tocado');
-        
-        // Mostrar toast visual
-        showSoundToast('🔔 Novo pedido recebido!');
-        
-    } catch (error) {
-        console.error('❌ Erro ao tocar som:', error);
-    }
-}
-
-// Mostrar toast de notificação
-function showSoundToast(message) {
-    // Remover toast anterior se existir
-    const existingToast = document.querySelector('.sound-toast');
-    if (existingToast) {
-        existingToast.remove();
-    }
-    
-    // Criar novo toast
-    const toast = document.createElement('div');
-    toast.className = 'sound-toast';
-    toast.textContent = message;
-    
-    document.body.appendChild(toast);
-    
-    // Mostrar toast
-    setTimeout(() => {
-        toast.classList.add('show');
-    }, 10);
-    
-    // Esconder após 3 segundos
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.remove();
+        // Habilitar áudio após interação do usuário
+        function enableAudio() {
+            userHasInteracted = true;
+            
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('🔊 Sistema de áudio inicializado');
+            } catch (error) {
+                console.warn('⚠️ Erro ao inicializar áudio:', error);
             }
-        }, 300);
-    }, 3000);
-}
+        }
 
-// Tentar tocar som com vibração de fallback
-function notifyNewOrder() {
-    // Som principal
-    playNotificationSound();
-    
-    // Vibração como backup (se suportado)
-    if (navigator.vibrate) {
-        navigator.vibrate([200, 100, 200]); // Padrão: vibra-pausa-vibra
-        console.log('📳 Vibração ativada');
-    }
-    
-    // Tentar notificação do browser (se permitido)
-    if (Notification.permission === 'granted') {
-        new Notification('🔔 Novo Pedido', {
-            body: 'Você recebeu um novo pedido para entrega!',
-            icon: '🏍️',
-            tag: 'new-order'
-        });
-    }
-}
+        // Tocar som de notificação
+        function playNotificationSound() {
+            if (!audioContext || !userHasInteracted) {
+                console.log('⚠️ Áudio não disponível ainda');
+                return;
+            }
 
-        // ============ FIM FUNCIONALIDADES DO MAPA ============
+            try {
+                // Gerar som de sino programaticamente
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                // Conectar nós
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Configurar som de sino (duas frequências)
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+                
+                // Configurar volume (envelope)
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                // Tocar som
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+                
+                console.log('🔔 Som de notificação tocado');
+                
+                // Mostrar toast visual
+                showSoundToast('🔔 Novo pedido recebido!');
+                
+            } catch (error) {
+                console.error('❌ Erro ao tocar som:', error);
+            }
+        }
+
+        // Mostrar toast de notificação
+        function showSoundToast(message) {
+            // Remover toast anterior se existir
+            const existingToast = document.querySelector('.sound-toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+            
+            // Criar novo toast
+            const toast = document.createElement('div');
+            toast.className = 'sound-toast';
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+            
+            // Mostrar toast
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+            
+            // Esconder após 3 segundos
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.remove();
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // Tentar tocar som com vibração de fallback
+        function notifyNewOrder() {
+            // Som principal
+            playNotificationSound();
+            
+            // Vibração como backup (se suportado)
+            if (navigator.vibrate) {
+                navigator.vibrate([200, 100, 200]); // Padrão: vibra-pausa-vibra
+                console.log('📳 Vibração ativada');
+            }
+            
+            // Tentar notificação do browser (se permitido)
+            if (Notification.permission === 'granted') {
+                new Notification('🔔 Novo Pedido', {
+                    body: 'Você recebeu um novo pedido para entrega!',
+                    icon: '🏍️',
+                    tag: 'new-order'
+                });
+            }
+        }
 
         // ============ FUNCIONALIDADES DE RELATÓRIOS ============
         
@@ -1909,7 +1867,6 @@ function notifyNewOrder() {
             const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
 
             console.log(`📊 Gerando relatório para: ${selectedDate}`);
-            console.log(`📊 Período: ${startOfDay.toISOString()} até ${endOfDay.toISOString()}`);
 
             let concludedCount = 0;
 
@@ -1920,7 +1877,6 @@ function notifyNewOrder() {
                     
                     if (concludedDate >= startOfDay && concludedDate < endOfDay) {
                         concludedCount++;
-                        console.log(`📊 Pedido concluído encontrado: ${assignment.order?.displayId} às ${concludedDate.toLocaleTimeString()}`);
                     }
                 }
             });
@@ -1933,13 +1889,11 @@ function notifyNewOrder() {
             showToast(`📊 Relatório gerado: ${concludedCount} pedidos em ${dateFormatted}`, 'info');
         }
 
-        // ============ FIM FUNCIONALIDADES DE RELATÓRIOS ============
-
         // Renderizar pedidos
         function renderOrders() {
             const ordersGrid = document.getElementById('ordersGrid');
             
-            // Filtrar pedidos enviados, aceitos ou despachados (não sumir após despacho)
+            // Filtrar pedidos enviados, aceitos ou despachados
             const activeAssignments = Array.from(assignments.values()).filter(assignment => 
                 assignment.status === 'sent' || assignment.status === 'accepted' || assignment.status === 'dispatched'
             );
@@ -1985,13 +1939,6 @@ function notifyNewOrder() {
             // Forma de pagamento
             const mainPayment = order.payments?.methods?.[0];
             const paymentText = mainPayment ? getPaymentMethodLabel(mainPayment) : 'N/A';
-
-            console.log('💳 DEBUG Payment:', {
-                hasPayments: !!order.payments,
-                methodsLength: order.payments?.methods?.length || 0,
-                mainPayment: mainPayment,
-                paymentText: paymentText
-            });
 
             // Observações dos itens
             let observations = [];
@@ -2081,10 +2028,8 @@ function notifyNewOrder() {
             try {
                 console.log(`✅ Aceitando pedido: ${assignmentId}`);
                 
-                // Importar funções do Firebase
                 const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
                 
-                // Atualizar status no Firebase
                 const docRef = doc(window.firebaseDb, 'deliveryAssignments', assignmentId);
                 await updateDoc(docRef, {
                     status: 'accepted',
@@ -2121,10 +2066,8 @@ function notifyNewOrder() {
                     })
                 });
                 
-                // Importar funções do Firebase
                 const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
                 
-                // Atualizar status no Firebase
                 const docRef = doc(window.firebaseDb, 'deliveryAssignments', assignmentId);
                 await updateDoc(docRef, {
                     status: 'dispatched',
@@ -2143,16 +2086,12 @@ function notifyNewOrder() {
         // Finalizar pedido sem código
         async function finishWithoutCode(assignmentId) {
             try {
-                console.log(`✅ Finalizando pedido sem código: ${assignmentId}`);
-                
                 if (!confirm('Tem certeza que deseja finalizar este pedido sem confirmar o código de entrega?')) {
                     return;
                 }
                 
-                // Importar funções do Firebase
                 const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
                 
-                // Atualizar status no Firebase para concluded
                 const docRef = doc(window.firebaseDb, 'deliveryAssignments', assignmentId);
                 await updateDoc(docRef, {
                     status: 'concluded',
@@ -2161,7 +2100,6 @@ function notifyNewOrder() {
                     updatedAt: serverTimestamp()
                 });
 
-                console.log('✅ Pedido finalizado sem código');
                 showToast('✅ Pedido finalizado com sucesso!', 'success');
                 
             } catch (error) {
@@ -2178,12 +2116,9 @@ function notifyNewOrder() {
                 return;
             }
 
-            // Solicitar código do usuário
             const code = prompt('Digite o código de confirmação de entrega (4 últimos dígitos do celular do cliente):');
             
-            if (!code) {
-                return; // Usuário cancelou
-            }
+            if (!code) return;
 
             if (code.length !== 4 || !/^\d{4}$/.test(code)) {
                 showToast('Código deve ter exatamente 4 dígitos', 'error');
@@ -2191,9 +2126,6 @@ function notifyNewOrder() {
             }
 
             try {
-                console.log(`🔢 Confirmando código ${code} para pedido: ${assignment.order.id}`);
-
-                // Verificar código via API do iFood
                 const response = await fetch('/.netlify/functions/ifood-proxy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2206,13 +2138,10 @@ function notifyNewOrder() {
                 });
 
                 if (response.ok) {
-                    // Código confirmado com sucesso
                     showToast('✅ Código confirmado com sucesso!', 'success');
                     
-                    // Importar funções do Firebase
                     const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
                     
-                    // Atualizar status no Firebase para concluded
                     const docRef = doc(window.firebaseDb, 'deliveryAssignments', assignmentId);
                     await updateDoc(docRef, {
                         status: 'concluded',
@@ -2220,11 +2149,8 @@ function notifyNewOrder() {
                         deliveryCode: code,
                         updatedAt: serverTimestamp()
                     });
-
-                    console.log('✅ Pedido marcado como concluído');
                     
                 } else {
-                    // Erro na verificação
                     const errorData = await response.json();
                     const errorMessage = errorData.description || 'Código incorreto. Use os 4 últimos números do celular do titular do pedido.';
                     showToast(`❌ ${errorMessage}`, 'error');
@@ -2256,7 +2182,7 @@ function notifyNewOrder() {
             document.getElementById('orderModal').style.display = 'none';
         }
 
-        // Gerar detalhes do pedido (similar ao PDV)
+        // Gerar detalhes do pedido
         function generateOrderDetails(order) {
             let html = `
                 <div style="display: grid; gap: 1rem;">
@@ -2320,6 +2246,8 @@ function notifyNewOrder() {
         // Logout
         async function logout() {
             try {
+                // Parar rastreamento antes de fazer logout
+                stopLocationTracking();
                 await window.signOut(window.firebaseAuth);
             } catch (error) {
                 console.error('Erro no logout:', error);
@@ -2337,7 +2265,6 @@ function notifyNewOrder() {
         function getPaymentMethodLabel(payment) {
             if (!payment) return 'N/A';
             
-            // Mapear métodos de pagamento baseado na estrutura da API do iFood
             const methodMap = {
                 'CASH': 'Dinheiro',
                 'CREDIT': 'Cartão de Crédito', 
@@ -2349,23 +2276,17 @@ function notifyNewOrder() {
                 'DIGITAL_WALLET': 'Carteira Digital'
             };
             
-            // Tratar o campo method que pode conter múltiplos valores separados por /
             let method = payment.method || '';
             let label = 'N/A';
             
-            // Se method contém múltiplos valores (ex: "CREDIT / DEBIT / MEAL_VOUCHER"), usar o primeiro
             if (method.includes('/')) {
                 const methods = method.split('/').map(m => m.trim());
                 method = methods[0];
             }
             
-            // Remover espaços extras
             method = method.trim();
-            
-            // Mapear o método
             label = methodMap[method] || method || 'N/A';
             
-            // Adicionar informação de ONLINE/OFFLINE baseado no campo type
             if (payment.type) {
                 if (payment.type === 'ONLINE') {
                     label += ' 🟢 (Já Pago)';
@@ -2374,12 +2295,10 @@ function notifyNewOrder() {
                 }
             }
             
-            // Adicionar informações de cartão se disponível
             if (payment.card?.brand && payment.card.brand !== 'PIX') {
                 label += ` (${payment.card.brand})`;
             }
             
-            // Adicionar informações de carteira digital
             if (payment.wallet?.name) {
                 const walletMap = {
                     'APPLE_PAY': 'Apple Pay',
@@ -2390,7 +2309,6 @@ function notifyNewOrder() {
                 label += ` (${walletName})`;
             }
             
-            // Para dinheiro, mostrar troco se aplicável
             if (method === 'CASH' && payment.cash?.changeFor) {
                 const changeFor = payment.cash.changeFor;
                 const value = payment.value || 0;
@@ -2452,6 +2370,14 @@ function notifyNewOrder() {
             }
         });
 
+        // Cleanup ao sair da página
+        window.addEventListener('beforeunload', () => {
+            stopLocationTracking();
+            if (unsubscribeAssignments) {
+                unsubscribeAssignments();
+            }
+        });
+
         // Tornar funções globais
         window.switchTab = switchTab;
         window.acceptOrder = acceptOrder;
@@ -2464,6 +2390,8 @@ function notifyNewOrder() {
         window.closeReportsModal = closeReportsModal;
         window.generateReport = generateReport;
         window.logout = logout;
+        window.centerMapOnUser = centerMapOnUser;
+        window.toggleLocationTracking = toggleLocationTracking;
     </script>
 </body>
 </html>
