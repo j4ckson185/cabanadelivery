@@ -797,7 +797,57 @@
             background: #7c3aed;
         }
 
-        /* Marcador de localização do usuário - MELHORADO */
+        /* Controles de rotação do mapa */
+        .rotation-controls {
+            position: absolute;
+            top: 60px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .rotation-btn {
+            width: 35px;
+            height: 35px;
+            background: white;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+
+        .rotation-btn:hover {
+            background: #f4f4f4;
+        }
+
+        .rotation-btn:active {
+            background: #e4e4e4;
+        }
+
+        /* Permitir rotação do mapa - container rotacionável */
+        .leaflet-container {
+            touch-action: none !important; /* Permitir controle total do touch */
+        }
+
+        /* Container de rotação que não interfere com tiles */
+        .map-rotation-container {
+            width: 100%;
+            height: 100%;
+            transform-origin: center center;
+            transition: transform 0.3s ease-out;
+        }
+
+        /* Marcador de localização do usuário */
         .user-location-marker {
             width: 20px;
             height: 20px;
@@ -1022,7 +1072,14 @@
                             </button>
                         </div>
                     </div>
-                    <div id="deliveryMap"></div>
+                    <div class="map-rotation-container" id="mapRotationContainer">
+                        <div id="deliveryMap"></div>
+                        <div class="rotation-controls">
+                            <div class="rotation-btn" onclick="rotateMap(15)" title="Girar à direita">↻</div>
+                            <div class="rotation-btn" onclick="rotateMap(-15)" title="Girar à esquerda">↺</div>
+                            <div class="rotation-btn" onclick="resetMapRotation()" title="Resetar rotação">⊕</div>
+                        </div>
+                    </div>
                     <div class="map-legend">
                         <div class="legend-title">Legenda</div>
                         <div class="legend-item">
@@ -1112,13 +1169,15 @@
         let unsubscribeAssignments = null;
         let currentTab = 'pedidos';
 
-        // Variáveis do mapa - SIMPLIFICADAS
+        // Variáveis do mapa - COM ROTAÇÃO CORRIGIDA
         let deliveryMap = null;
         let mapMarkers = new Map();
         let userLocationMarker = null;
         let watchId = null;
         let locationTracking = false;
         let lastKnownPosition = null;
+        let mapRotation = 0;
+        let isRotating = false;
 
         // Coordenadas da loja
         const STORE_LOCATION = {
@@ -1325,17 +1384,17 @@
 
         // ============ MAPA OTIMIZADO PARA MOBILE ============
 
-        // Inicializar mapa - VERSÃO OTIMIZADA SEM ROTAÇÃO
+        // Inicializar mapa - COM ROTAÇÃO CORRIGIDA
         function initializeMap() {
             if (deliveryMap) {
                 return; // Mapa já inicializado
             }
             
-            console.log('🗺️ Inicializando mapa otimizado para mobile...');
+            console.log('🗺️ Inicializando mapa com rotação corrigida...');
             
-            // Opções otimizadas para mobile
+            // Opções otimizadas
             const mapOptions = {
-                preferCanvas: false, // Canvas pode causar problemas no mobile
+                preferCanvas: false,
                 zoomControl: true,
                 attributionControl: true,
                 fadeAnimation: true,
@@ -1352,17 +1411,17 @@
             // Criar mapa centrado na loja
             deliveryMap = L.map('deliveryMap', mapOptions).setView([STORE_LOCATION.lat, STORE_LOCATION.lng], 14);
             
-            // Tiles otimizados para mobile
+            // Tiles otimizados
             const tileLayerOptions = {
                 attribution: '© OpenStreetMap contributors',
                 maxZoom: 18,
                 minZoom: 12,
                 tileSize: 256,
                 zoomOffset: 0,
-                keepBuffer: 4, // Buffer adequado para mobile
-                updateWhenIdle: false, // Atualização contínua para melhor UX
-                updateWhenZooming: true, // Atualizar durante zoom
-                updateInterval: 100, // Responsivo
+                keepBuffer: 4,
+                updateWhenIdle: false,
+                updateWhenZooming: true,
+                updateInterval: 100,
                 crossOrigin: true
             };
             
@@ -1402,12 +1461,150 @@
             deliveryMap.setMinZoom(12);
             deliveryMap.setMaxZoom(18);
 
+            // Adicionar funcionalidade de rotação por touch
+            addTouchRotation();
+
             // Inicializar localização automaticamente
             setTimeout(() => {
                 initializeUserLocation();
             }, 1000);
             
-            console.log('✅ Mapa inicializado com sucesso');
+            console.log('✅ Mapa inicializado com rotação corrigida');
+        }
+
+        // Adicionar rotação por touch - VERSÃO CORRIGIDA
+        function addTouchRotation() {
+            const mapContainer = deliveryMap.getContainer();
+            const rotationContainer = document.getElementById('mapRotationContainer');
+            
+            let initialAngle = 0;
+            let startRotation = 0;
+            let isRotatingTouch = false;
+            let lastTouchCount = 0;
+            
+            mapContainer.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    isRotatingTouch = true;
+                    initialAngle = getTouchAngle(e.touches[0], e.touches[1]);
+                    startRotation = mapRotation;
+                    lastTouchCount = 2;
+                    console.log('🔄 Iniciando rotação por touch');
+                }
+                lastTouchCount = e.touches.length;
+            }, { passive: false });
+            
+            mapContainer.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2 && isRotatingTouch) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const currentAngle = getTouchAngle(e.touches[0], e.touches[1]);
+                    const angleDiff = currentAngle - initialAngle;
+                    
+                    // Aplicar rotação suave
+                    mapRotation = startRotation + angleDiff;
+                    
+                    // Manter rotação entre -180 e 180
+                    while (mapRotation > 180) mapRotation -= 360;
+                    while (mapRotation < -180) mapRotation += 360;
+                    
+                    applyRotation();
+                }
+            }, { passive: false });
+            
+            mapContainer.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) {
+                    isRotatingTouch = false;
+                    if (lastTouchCount === 2) {
+                        // Finalizar rotação e forçar refresh
+                        finishRotation();
+                    }
+                }
+                lastTouchCount = e.touches.length;
+            }, { passive: true });
+            
+            mapContainer.addEventListener('touchcancel', () => {
+                isRotatingTouch = false;
+                finishRotation();
+            }, { passive: true });
+        }
+
+        // Aplicar rotação - VERSÃO CORRIGIDA
+        function applyRotation() {
+            const rotationContainer = document.getElementById('mapRotationContainer');
+            if (rotationContainer) {
+                // Aplicar rotação no container wrapper, não no mapa diretamente
+                rotationContainer.style.transform = `rotate(${mapRotation}deg)`;
+                
+                // Usar requestAnimationFrame para suavizar
+                requestAnimationFrame(() => {
+                    if (deliveryMap) {
+                        // Invalidar tamanho para forçar recálculo
+                        deliveryMap.invalidateSize({ animate: false });
+                    }
+                });
+            }
+        }
+
+        // Finalizar rotação e forçar refresh dos tiles
+        function finishRotation() {
+            console.log(`🔄 Finalizando rotação: ${mapRotation}°`);
+            
+            // Debounce para evitar muitos refreshes
+            clearTimeout(window.rotationTimeout);
+            window.rotationTimeout = setTimeout(() => {
+                if (deliveryMap) {
+                    console.log('🔄 Forçando refresh dos tiles após rotação');
+                    
+                    // Forçar redraw dos tiles
+                    deliveryMap.eachLayer((layer) => {
+                        if (layer._url && layer.redraw) {
+                            layer.redraw();
+                        }
+                    });
+                    
+                    // Invalidar tamanho
+                    deliveryMap.invalidateSize({ animate: false });
+                    
+                    // Forçar reposicionamento
+                    const center = deliveryMap.getCenter();
+                    const zoom = deliveryMap.getZoom();
+                    setTimeout(() => {
+                        deliveryMap.setView(center, zoom, { animate: false });
+                    }, 100);
+                }
+            }, 300);
+        }
+
+        // Rotacionar mapa programaticamente
+        function rotateMap(degrees) {
+            mapRotation += degrees;
+            
+            // Manter rotação entre -180 e 180
+            while (mapRotation > 180) mapRotation -= 360;
+            while (mapRotation < -180) mapRotation += 360;
+            
+            applyRotation();
+            finishRotation();
+            
+            console.log(`🔄 Mapa rotacionado: ${mapRotation}°`);
+        }
+
+        // Resetar rotação
+        function resetMapRotation() {
+            mapRotation = 0;
+            applyRotation();
+            finishRotation();
+            
+            console.log('🔄 Rotação resetada');
+        }
+
+        // Obter ângulo entre dois toques
+        function getTouchAngle(touch1, touch2) {
+            const dx = touch2.clientX - touch1.clientX;
+            const dy = touch2.clientY - touch1.clientY;
+            return Math.atan2(dy, dx) * (180 / Math.PI);
         }
 
         // Inicializar localização do usuário - OTIMIZADA
@@ -2392,6 +2589,8 @@
         window.logout = logout;
         window.centerMapOnUser = centerMapOnUser;
         window.toggleLocationTracking = toggleLocationTracking;
+        window.rotateMap = rotateMap;
+        window.resetMapRotation = resetMapRotation;
     </script>
 </body>
 </html>
