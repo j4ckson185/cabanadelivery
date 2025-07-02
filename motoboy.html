@@ -834,6 +834,7 @@
     display: flex;
     flex-direction: column;
     gap: 5px;
+    max-width: 35px; /* Limitar largura para mobile */
 }
 
 .rotation-btn {
@@ -860,6 +861,17 @@
 
 .rotation-btn:active {
     background: #e4e4e4;
+}
+
+/* Estilo especial para o botão de zoom */
+.rotation-btn.zoom-fix {
+    background: #10b981 !important;
+    color: white !important;
+    border-color: #059669 !important;
+}
+
+.rotation-btn.zoom-fix:hover {
+    background: #059669 !important;
 }
 
 /* Permitir rotação do mapa - versão otimizada */
@@ -1287,8 +1299,12 @@
                 setTimeout(() => {
                     initializeMap();
                     
-                    // Aguardar mais um pouco antes de carregar pedidos para garantir estabilidade
+                    // ✅ NOVO: Garantir que zoom esteja habilitado ao abrir o mapa
                     setTimeout(() => {
+                        if (deliveryMap && deliveryMap.touchZoom) {
+                            deliveryMap.touchZoom.enable();
+                            console.log('🔧 Zoom habilitado ao trocar para aba do mapa');
+                        }
                         loadMapOrders();
                     }, 200);
                 }, 100);
@@ -1416,7 +1432,41 @@ let lastTouchAngle = 0;
             addRotationControls();
             addOptimizedTouchRotation(); // Versão otimizada
             
+            // ✅ NOVO: Monitorar e garantir que zoom sempre funcione
+            setupZoomMonitoring();
+            
             console.log('✅ Mapa inicializado com sucesso');
+        }
+
+        // ✅ NOVA FUNÇÃO: Monitorar e manter zoom funcionando
+        function setupZoomMonitoring() {
+            // Verificar periodicamente se zoom está habilitado
+            setInterval(() => {
+                if (deliveryMap && deliveryMap.touchZoom && !deliveryMap.touchZoom._enabled && !isRotating) {
+                    console.log('🔧 Detectado zoom desabilitado - reabilitando...');
+                    deliveryMap.touchZoom.enable();
+                }
+            }, 3000); // Verificar a cada 3 segundos
+            
+            // Listener para garantir zoom após qualquer evento
+            if (deliveryMap) {
+                deliveryMap.on('zoomend', () => {
+                    setTimeout(() => {
+                        if (!isRotating && deliveryMap.touchZoom) {
+                            deliveryMap.touchZoom.enable();
+                        }
+                    }, 100);
+                });
+                
+                // Garantir zoom após movimento
+                deliveryMap.on('moveend', () => {
+                    setTimeout(() => {
+                        if (!isRotating && deliveryMap.touchZoom) {
+                            deliveryMap.touchZoom.enable();
+                        }
+                    }, 100);
+                });
+            }
         }
 
         // Função utilitária de debounce
@@ -1460,9 +1510,29 @@ function addRotationControls() {
     resetBtn.title = 'Resetar rotação';
     resetBtn.onclick = () => resetMapRotation();
     
+    // ✅ NOVO: Botão para forçar reabilitação do zoom
+    const fixZoomBtn = document.createElement('div');
+    fixZoomBtn.className = 'rotation-btn zoom-fix';
+    fixZoomBtn.innerHTML = '🔍';
+    fixZoomBtn.title = 'Reabilitar Zoom';
+    fixZoomBtn.onclick = () => {
+        if (deliveryMap && deliveryMap.touchZoom) {
+            isRotating = false;
+            deliveryMap.touchZoom.enable();
+            console.log('🔧 Zoom forçadamente reabilitado pelo usuário');
+            
+            // Feedback visual
+            fixZoomBtn.style.background = '#059669';
+            setTimeout(() => {
+                fixZoomBtn.style.background = '#10b981';
+            }, 500);
+        }
+    };
+    
     controlsDiv.appendChild(rotateRightBtn);
     controlsDiv.appendChild(rotateLeftBtn);
     controlsDiv.appendChild(resetBtn);
+    controlsDiv.appendChild(fixZoomBtn);
     
     mapContainer.appendChild(controlsDiv);
 }
@@ -1471,12 +1541,26 @@ function addRotationControls() {
 function rotateMap(degrees) {
     mapRotation += degrees;
     applyRotation();
+    
+    // ✅ NOVO: Garantir que zoom permaneça habilitado após rotação por botão
+    if (deliveryMap && deliveryMap.touchZoom && !isRotating) {
+        setTimeout(() => {
+            deliveryMap.touchZoom.enable();
+        }, 50);
+    }
 }
 
 // Resetar rotação
 function resetMapRotation() {
     mapRotation = 0;
+    isRotating = false; // Garantir que não está rotacionando
     applyRotation();
+    
+    // ✅ NOVO: Garantir que zoom seja reabilitado ao resetar
+    if (deliveryMap && deliveryMap.touchZoom) {
+        deliveryMap.touchZoom.enable();
+        console.log('🔧 Zoom reabilitado ao resetar rotação');
+    }
 }
 
 // Aplicar rotação otimizada
@@ -1493,11 +1577,12 @@ function applyRotation() {
     console.log(`🔄 Mapa rotacionado: ${mapRotation}°`);
 }
 
-// Versão otimizada da rotação por touch
+// Versão otimizada e CORRIGIDA da rotação por touch
 function addOptimizedTouchRotation() {
     const mapContainer = deliveryMap.getContainer();
     let touches = [];
     let rotationStarted = false;
+    let rotationTimer = null;
     
     // Throttle para otimizar performance
     const throttledRotation = throttle((angleDiff) => {
@@ -1509,22 +1594,57 @@ function addOptimizedTouchRotation() {
         applyRotation();
     }, 16); // ~60fps
     
+    // Função para garantir que o zoom seja reabilitado
+    function ensureZoomEnabled() {
+        if (deliveryMap && deliveryMap.touchZoom) {
+            deliveryMap.touchZoom.enable();
+            console.log('🔧 Zoom reabilitado');
+        }
+    }
+    
+    // Timeout de segurança para reabilitar zoom
+    function setZoomSafetyTimeout() {
+        clearTimeout(rotationTimer);
+        rotationTimer = setTimeout(() => {
+            rotationStarted = false;
+            isRotating = false;
+            ensureZoomEnabled();
+            console.log('⏰ Timeout de segurança: zoom reabilitado');
+        }, 2000); // 2 segundos de segurança
+    }
+    
     mapContainer.addEventListener('touchstart', (e) => {
         if (e.touches.length === 2) {
-            e.preventDefault();
-            rotationStarted = true;
-            isRotating = true;
+            // NÃO prevenir default inicialmente - deixar zoom funcionar
+            
             touches = Array.from(e.touches);
             lastTouchAngle = getTouchAngle(touches[0], touches[1]);
             
-            // Parar zoom durante rotação
-            deliveryMap.touchZoom.disable();
+            // Aguardar um pouco para ver se é rotação ou zoom
+            setTimeout(() => {
+                if (e.touches && e.touches.length === 2) {
+                    const currentAngle = getTouchAngle(e.touches[0], e.touches[1]);
+                    const angleDiff = Math.abs(currentAngle - lastTouchAngle);
+                    
+                    // Só ativar rotação se houver movimento angular significativo
+                    if (angleDiff > 5) {
+                        rotationStarted = true;
+                        isRotating = true;
+                        console.log('🔄 Rotação iniciada');
+                        
+                        // Só agora desabilitar zoom se for rotação mesmo
+                        deliveryMap.touchZoom.disable();
+                        setZoomSafetyTimeout();
+                    }
+                }
+            }, 150); // Aguardar 150ms para distinguir rotação de zoom
         }
-    }, { passive: false });
+    }, { passive: true }); // Usar passive para não interferir
     
     mapContainer.addEventListener('touchmove', (e) => {
         if (rotationStarted && isRotating && e.touches.length === 2) {
-            e.preventDefault();
+            e.preventDefault(); // Só prevenir se for rotação confirmada
+            
             const currentAngle = getTouchAngle(e.touches[0], e.touches[1]);
             const angleDiff = currentAngle - lastTouchAngle;
             
@@ -1534,26 +1654,37 @@ function addOptimizedTouchRotation() {
             }
             
             lastTouchAngle = currentAngle;
+            setZoomSafetyTimeout(); // Renovar timeout
         }
     }, { passive: false });
     
     mapContainer.addEventListener('touchend', (e) => {
+        clearTimeout(rotationTimer);
+        
         if (e.touches.length < 2) {
+            console.log('✋ Touch end - reabilitando zoom');
             rotationStarted = false;
             isRotating = false;
             
-            // Reabilitar zoom após rotação
+            // Reabilitar zoom imediatamente
             setTimeout(() => {
-                deliveryMap.touchZoom.enable();
-            }, 100);
+                ensureZoomEnabled();
+            }, 50);
         }
-    });
+    }, { passive: true });
     
-    mapContainer.addEventListener('touchcancel', () => {
+    mapContainer.addEventListener('touchcancel', (e) => {
+        console.log('❌ Touch cancel - reabilitando zoom');
+        clearTimeout(rotationTimer);
         rotationStarted = false;
         isRotating = false;
-        deliveryMap.touchZoom.enable();
-    });
+        ensureZoomEnabled();
+    }, { passive: true });
+    
+    // Garantir que o zoom esteja sempre habilitado ao inicializar
+    setTimeout(() => {
+        ensureZoomEnabled();
+    }, 1000);
 }
 
 // Calcular ângulo entre dois pontos de toque
