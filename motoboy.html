@@ -825,7 +825,7 @@
     }
 }
 
-        /* Controles de rotação do mapa */
+        /* Controles de rotação do mapa - versão simplificada */
 .rotation-controls {
     position: absolute;
     top: 60px;
@@ -834,7 +834,7 @@
     display: flex;
     flex-direction: column;
     gap: 5px;
-    max-width: 35px; /* Limitar largura para mobile */
+    max-width: 35px;
 }
 
 .rotation-btn {
@@ -863,54 +863,19 @@
     background: #e4e4e4;
 }
 
-/* Estilo especial para o botão de zoom */
-.rotation-btn.zoom-fix {
-    background: #10b981 !important;
-    color: white !important;
-    border-color: #059669 !important;
-}
-
-.rotation-btn.zoom-fix:hover {
-    background: #059669 !important;
-}
-
-/* Permitir rotação do mapa - versão otimizada */
+/* Permitir rotação do mapa - versão simplificada */
 .leaflet-container {
     touch-action: pan-x pan-y pinch-zoom !important;
-    /* Otimizações para performance */
-    -webkit-transform: translate3d(0, 0, 0);
-    transform: translate3d(0, 0, 0);
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    -webkit-perspective: 1000;
-    perspective: 1000;
 }
 
-/* Otimizações para tiles do mapa */
-.leaflet-tile-container {
-    -webkit-transform: translate3d(0, 0, 0);
-    transform: translate3d(0, 0, 0);
-}
-
+/* Otimizações básicas para tiles do mapa */
 .leaflet-tile {
-    -webkit-transform: translate3d(0, 0, 0);
-    transform: translate3d(0, 0, 0);
-    image-rendering: optimizeSpeed;
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: optimize-contrast;
-    -ms-interpolation-mode: nearest-neighbor;
-}
-
-/* Otimizar marcadores para performance */
-.leaflet-marker-icon {
-    -webkit-transform: translate3d(0, 0, 0);
-    transform: translate3d(0, 0, 0);
+    image-rendering: auto; /* ✅ Mudado para auto para melhor compatibilidade */
 }
 
 /* Suavizar animações de zoom */
 .leaflet-zoom-animated {
-    -webkit-transition: -webkit-transform 0.25s cubic-bezier(0, 0, 0.25, 1);
-    transition: transform 0.25s cubic-bezier(0, 0, 0.25, 1);
+    transition: transform 0.25s ease-out;
 }
 
 /* Toast de notificação de som */
@@ -1268,20 +1233,15 @@
             });
         }
 
-        // Trocar abas (otimizado)
+        // Trocar abas - versão simplificada
         function switchTab(tabName) {
             // Atualizar botões de navegação
             document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
 
-            // Parar localização e limpar timers se sair da aba do mapa
+            // Parar localização se sair da aba do mapa
             if (currentTab === 'mapa' && tabName !== 'mapa') {
                 stopLocationTracking();
-                
-                // Limpar todos os timers e debounced functions
-                if (window.rotationDebounceTimer) {
-                    clearTimeout(window.rotationDebounceTimer);
-                }
             }
             
             // Esconder todas as abas
@@ -1298,15 +1258,9 @@
                 // Inicializar mapa quando trocar para aba do mapa
                 setTimeout(() => {
                     initializeMap();
-                    
-                    // ✅ NOVO: Garantir que zoom esteja habilitado ao abrir o mapa
                     setTimeout(() => {
-                        if (deliveryMap && deliveryMap.touchZoom) {
-                            deliveryMap.touchZoom.enable();
-                            console.log('🔧 Zoom habilitado ao trocar para aba do mapa');
-                        }
                         loadMapOrders();
-                    }, 200);
+                    }, 300);
                 }, 100);
             }
         }
@@ -1326,71 +1280,40 @@ let lastTouchAngle = 0;
             
             console.log('🗺️ Inicializando mapa do entregador...');
             
-            // Configurações otimizadas para performance no mobile
+            // Configurações mais simples para evitar conflitos
             const mapOptions = {
-                preferCanvas: true, // Usar Canvas ao invés de SVG para melhor performance
+                preferCanvas: true,
                 zoomControl: true,
                 attributionControl: true,
-                fadeAnimation: false, // Desabilitar fade para evitar flickers
+                fadeAnimation: true, // ✅ Reabilitado para suavizar carregamento
                 zoomAnimation: true,
                 zoomAnimationThreshold: 4,
-                markerZoomAnimation: false, // Otimizar animações de marcadores
-                wheelDebounceTime: 60, // Debounce para wheel
+                wheelDebounceTime: 40, // ✅ Reduzido para mais responsivo
                 wheelPxPerZoomLevel: 60
             };
             
             // Criar mapa centrado na loja
             deliveryMap = L.map('deliveryMap', mapOptions).setView([STORE_LOCATION.lat, STORE_LOCATION.lng], 14);
             
-            // Configurações otimizadas do tileLayer para mobile
+            // Configurações mais conservadoras do tileLayer
             const tileLayerOptions = {
                 attribution: '© OpenStreetMap contributors',
                 maxZoom: 18,
                 minZoom: 12,
                 tileSize: 256,
                 zoomOffset: 0,
-                keepBuffer: 4, // Manter mais tiles em buffer
-                updateWhenIdle: false, // Atualizar durante movimento
-                updateWhenZooming: true, // Atualizar durante zoom
-                updateInterval: 100, // Intervalo de atualização otimizado
-                crossOrigin: true,
-                // Pré-carregar tiles adjacentes
-                bounds: L.latLngBounds(
-                    [STORE_LOCATION.lat - 0.06, STORE_LOCATION.lng - 0.06],
-                    [STORE_LOCATION.lat + 0.06, STORE_LOCATION.lng + 0.06]
-                )
+                keepBuffer: 2, // ✅ Reduzido para evitar conflitos
+                updateWhenIdle: true, // ✅ Mudado para true para estabilidade
+                updateWhenZooming: false, // ✅ Desabilitado para evitar conflitos
+                updateInterval: 200 // ✅ Aumentado para estabilidade
             };
             
-            // Adicionar tiles do OpenStreetMap com configurações otimizadas
+            // Adicionar tiles do OpenStreetMap
             const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', tileLayerOptions);
             tileLayer.addTo(deliveryMap);
             
-            // Eventos otimizados para performance
-            let rotationDebounceTimer = null;
-            
-            // Listener otimizado para moveend (quando para de mover)
-            deliveryMap.on('moveend', debounce(() => {
-                console.log('🗺️ Mapa parou de mover - atualizando marcadores se necessário');
-            }, 200));
-            
-            // Listener otimizado para zoomend
-            deliveryMap.on('zoomend', debounce(() => {
-                console.log('🗺️ Zoom finalizado - nível:', deliveryMap.getZoom());
-                // Reajustar rotação após zoom se necessário
-                if (mapRotation !== 0) {
-                    clearTimeout(rotationDebounceTimer);
-                    rotationDebounceTimer = setTimeout(() => {
-                        applyRotation();
-                    }, 100);
-                }
-            }, 150));
-            
-            // Evitar conflitos durante zoom
-            deliveryMap.on('zoomstart', () => {
-                if (isRotating) {
-                    isRotating = false; // Parar rotação durante zoom
-                }
-            });
+            // ✅ REMOVIDO: Listeners problemáticos que interferiam com zoom
+            // Manter apenas listeners essenciais
             
             // Adicionar marcador da loja
             const storeIcon = L.divIcon({
@@ -1430,46 +1353,12 @@ let lastTouchAngle = 0;
            }, 1000);
 
             addRotationControls();
-            addOptimizedTouchRotation(); // Versão otimizada
-            
-            // ✅ NOVO: Monitorar e garantir que zoom sempre funcione
-            setupZoomMonitoring();
+            addSimpleTouchRotation(); // ✅ Versão simplificada que funciona
             
             console.log('✅ Mapa inicializado com sucesso');
         }
 
-        // ✅ NOVA FUNÇÃO: Monitorar e manter zoom funcionando
-        function setupZoomMonitoring() {
-            // Verificar periodicamente se zoom está habilitado
-            setInterval(() => {
-                if (deliveryMap && deliveryMap.touchZoom && !deliveryMap.touchZoom._enabled && !isRotating) {
-                    console.log('🔧 Detectado zoom desabilitado - reabilitando...');
-                    deliveryMap.touchZoom.enable();
-                }
-            }, 3000); // Verificar a cada 3 segundos
-            
-            // Listener para garantir zoom após qualquer evento
-            if (deliveryMap) {
-                deliveryMap.on('zoomend', () => {
-                    setTimeout(() => {
-                        if (!isRotating && deliveryMap.touchZoom) {
-                            deliveryMap.touchZoom.enable();
-                        }
-                    }, 100);
-                });
-                
-                // Garantir zoom após movimento
-                deliveryMap.on('moveend', () => {
-                    setTimeout(() => {
-                        if (!isRotating && deliveryMap.touchZoom) {
-                            deliveryMap.touchZoom.enable();
-                        }
-                    }, 100);
-                });
-            }
-        }
-
-        // Função utilitária de debounce
+        // Função utilitária de debounce - versão simplificada
         function debounce(func, wait) {
             let timeout;
             return function executedFunction(...args) {
@@ -1482,7 +1371,7 @@ let lastTouchAngle = 0;
             };
         }
 
-        // Adicionar controles de rotação
+        // Adicionar controles de rotação - versão simplificada
 function addRotationControls() {
     const mapContainer = document.getElementById('deliveryMap');
     
@@ -1510,184 +1399,84 @@ function addRotationControls() {
     resetBtn.title = 'Resetar rotação';
     resetBtn.onclick = () => resetMapRotation();
     
-    // ✅ NOVO: Botão para forçar reabilitação do zoom
-    const fixZoomBtn = document.createElement('div');
-    fixZoomBtn.className = 'rotation-btn zoom-fix';
-    fixZoomBtn.innerHTML = '🔍';
-    fixZoomBtn.title = 'Reabilitar Zoom';
-    fixZoomBtn.onclick = () => {
-        if (deliveryMap && deliveryMap.touchZoom) {
-            isRotating = false;
-            deliveryMap.touchZoom.enable();
-            console.log('🔧 Zoom forçadamente reabilitado pelo usuário');
-            
-            // Feedback visual
-            fixZoomBtn.style.background = '#059669';
-            setTimeout(() => {
-                fixZoomBtn.style.background = '#10b981';
-            }, 500);
-        }
-    };
-    
     controlsDiv.appendChild(rotateRightBtn);
     controlsDiv.appendChild(rotateLeftBtn);
     controlsDiv.appendChild(resetBtn);
-    controlsDiv.appendChild(fixZoomBtn);
     
     mapContainer.appendChild(controlsDiv);
 }
 
-// Rotacionar mapa
+// Rotacionar mapa - versão simplificada
 function rotateMap(degrees) {
     mapRotation += degrees;
     applyRotation();
-    
-    // ✅ NOVO: Garantir que zoom permaneça habilitado após rotação por botão
-    if (deliveryMap && deliveryMap.touchZoom && !isRotating) {
-        setTimeout(() => {
-            deliveryMap.touchZoom.enable();
-        }, 50);
-    }
 }
 
-// Resetar rotação
+// Resetar rotação - versão simplificada
 function resetMapRotation() {
     mapRotation = 0;
-    isRotating = false; // Garantir que não está rotacionando
+    isRotating = false;
     applyRotation();
-    
-    // ✅ NOVO: Garantir que zoom seja reabilitado ao resetar
-    if (deliveryMap && deliveryMap.touchZoom) {
-        deliveryMap.touchZoom.enable();
-        console.log('🔧 Zoom reabilitado ao resetar rotação');
-    }
 }
 
-// Aplicar rotação otimizada
+// Aplicar rotação - versão simplificada
 function applyRotation() {
-    // Aplicar rotação apenas no conteúdo do mapa, não no container
     const mapPane = deliveryMap.getPane('mapPane');
     if (mapPane) {
-        // Usar transform3d para melhor performance
-        mapPane.style.transform = `translate3d(0, 0, 0) rotate(${mapRotation}deg)`;
+        // Aplicar rotação apenas no conteúdo interno do mapa
+        mapPane.style.transform = `rotate(${mapRotation}deg)`;
         mapPane.style.transformOrigin = 'center center';
-        mapPane.style.willChange = 'transform'; // Otimização para animações
     }
     
     console.log(`🔄 Mapa rotacionado: ${mapRotation}°`);
 }
 
-// Versão otimizada e CORRIGIDA da rotação por touch
-function addOptimizedTouchRotation() {
+// Versão simplificada da rotação por touch que FUNCIONA
+function addSimpleTouchRotation() {
     const mapContainer = deliveryMap.getContainer();
-    let touches = [];
-    let rotationStarted = false;
-    let rotationTimer = null;
-    
-    // Throttle para otimizar performance
-    const throttledRotation = throttle((angleDiff) => {
-        if (!deliveryMap._zoom || deliveryMap._animatingZoom) {
-            return; // Não rotacionar durante zoom
-        }
-        
-        mapRotation += angleDiff * 0.3; // Reduzir sensibilidade
-        applyRotation();
-    }, 16); // ~60fps
-    
-    // Função para garantir que o zoom seja reabilitado
-    function ensureZoomEnabled() {
-        if (deliveryMap && deliveryMap.touchZoom) {
-            deliveryMap.touchZoom.enable();
-            console.log('🔧 Zoom reabilitado');
-        }
-    }
-    
-    // Timeout de segurança para reabilitar zoom
-    function setZoomSafetyTimeout() {
-        clearTimeout(rotationTimer);
-        rotationTimer = setTimeout(() => {
-            rotationStarted = false;
-            isRotating = false;
-            ensureZoomEnabled();
-            console.log('⏰ Timeout de segurança: zoom reabilitado');
-        }, 2000); // 2 segundos de segurança
-    }
+    let initialAngle = 0;
+    let isRotatingNow = false;
     
     mapContainer.addEventListener('touchstart', (e) => {
         if (e.touches.length === 2) {
-            // NÃO prevenir default inicialmente - deixar zoom funcionar
-            
-            touches = Array.from(e.touches);
-            lastTouchAngle = getTouchAngle(touches[0], touches[1]);
-            
-            // Aguardar um pouco para ver se é rotação ou zoom
-            setTimeout(() => {
-                if (e.touches && e.touches.length === 2) {
-                    const currentAngle = getTouchAngle(e.touches[0], e.touches[1]);
-                    const angleDiff = Math.abs(currentAngle - lastTouchAngle);
-                    
-                    // Só ativar rotação se houver movimento angular significativo
-                    if (angleDiff > 5) {
-                        rotationStarted = true;
-                        isRotating = true;
-                        console.log('🔄 Rotação iniciada');
-                        
-                        // Só agora desabilitar zoom se for rotação mesmo
-                        deliveryMap.touchZoom.disable();
-                        setZoomSafetyTimeout();
-                    }
-                }
-            }, 150); // Aguardar 150ms para distinguir rotação de zoom
+            // Capturar ângulo inicial
+            initialAngle = getTouchAngle(e.touches[0], e.touches[1]);
+            isRotatingNow = false; // Resetar flag
         }
-    }, { passive: true }); // Usar passive para não interferir
+    }, { passive: true });
     
     mapContainer.addEventListener('touchmove', (e) => {
-        if (rotationStarted && isRotating && e.touches.length === 2) {
-            e.preventDefault(); // Só prevenir se for rotação confirmada
-            
+        if (e.touches.length === 2) {
             const currentAngle = getTouchAngle(e.touches[0], e.touches[1]);
-            const angleDiff = currentAngle - lastTouchAngle;
+            const angleDiff = currentAngle - initialAngle;
             
-            // Filtrar movimentos muito pequenos ou muito grandes
-            if (Math.abs(angleDiff) > 2 && Math.abs(angleDiff) < 90) {
-                throttledRotation(angleDiff);
+            // Se movimento angular significativo, é rotação
+            if (Math.abs(angleDiff) > 10) {
+                isRotatingNow = true;
+                isRotating = true;
+                
+                // Aplicar rotação suave
+                mapRotation += angleDiff * 0.5;
+                applyRotation();
+                
+                initialAngle = currentAngle;
+                
+                // Prevenir zoom apenas se for rotação confirmada
+                e.preventDefault();
             }
-            
-            lastTouchAngle = currentAngle;
-            setZoomSafetyTimeout(); // Renovar timeout
+            // Se movimento pequeno, deixar ser zoom natural
         }
     }, { passive: false });
     
     mapContainer.addEventListener('touchend', (e) => {
-        clearTimeout(rotationTimer);
-        
         if (e.touches.length < 2) {
-            console.log('✋ Touch end - reabilitando zoom');
-            rotationStarted = false;
+            isRotatingNow = false;
             isRotating = false;
-            
-            // Reabilitar zoom imediatamente
-            setTimeout(() => {
-                ensureZoomEnabled();
-            }, 50);
         }
     }, { passive: true });
-    
-    mapContainer.addEventListener('touchcancel', (e) => {
-        console.log('❌ Touch cancel - reabilitando zoom');
-        clearTimeout(rotationTimer);
-        rotationStarted = false;
-        isRotating = false;
-        ensureZoomEnabled();
-    }, { passive: true });
-    
-    // Garantir que o zoom esteja sempre habilitado ao inicializar
-    setTimeout(() => {
-        ensureZoomEnabled();
-    }, 1000);
 }
 
-// Calcular ângulo entre dois pontos de toque
+// Função getTouchAngle simplificada
 function getTouchAngle(touch1, touch2) {
     const dx = touch2.clientX - touch1.clientX;
     const dy = touch2.clientY - touch1.clientY;
@@ -1698,7 +1487,7 @@ function getTouchAngle(touch1, touch2) {
 let userLocationMarker = null;
 let watchId = null;
 
-// Inicializar localização do usuário
+// Inicializar localização do usuário - versão simplificada
 function initializeUserLocation() {
     if (!navigator.geolocation) {
         console.log('⚠️ Geolocalização não suportada pelo navegador');
@@ -1707,15 +1496,12 @@ function initializeUserLocation() {
 
     console.log('📍 Iniciando rastreamento de localização...');
 
-    // Opções otimizadas para entregador em movimento
+    // Opções básicas para localização
     const options = {
-        enableHighAccuracy: true,     // Máxima precisão (GPS)
-        timeout: 8000,               // 8 segundos para obter localização
-        maximumAge: 5000             // ✅ 5 segundos de cache (otimizado)
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 10000
     };
-
-    // Debounce para atualizações de localização
-    const debouncedLocationUpdate = debounce(updateUserLocation, 2000); // Max 1 atualização a cada 2s
 
     // Obter localização inicial
     navigator.geolocation.getCurrentPosition(
@@ -1729,23 +1515,19 @@ function initializeUserLocation() {
         options
     );
 
-    // Rastrear localização continuamente com throttling
+    // Rastrear localização continuamente
     watchId = navigator.geolocation.watchPosition(
         (position) => {
-            // Usar versão com debounce para evitar muitas atualizações
-            debouncedLocationUpdate(position);
+            updateUserLocation(position);
         },
         (error) => {
             console.warn('⚠️ Erro no rastreamento:', error.message);
         },
-        {
-            ...options,
-            maximumAge: 3000 // Cache um pouco menor para watch
-        }
+        options
     );
 }
 
-// Atualizar marcador de localização do usuário (otimizado)
+// Atualizar marcador de localização do usuário - versão simplificada
 function updateUserLocation(position) {
     if (!deliveryMap) return;
 
@@ -1755,19 +1537,8 @@ function updateUserLocation(position) {
 
     console.log(`📍 Localização atualizada: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${Math.round(accuracy)}m)`);
 
-    // Otimização: Só atualizar marcador se houve mudança significativa (>5 metros)
+    // Remover marcador anterior se existir
     if (userLocationMarker) {
-        const currentLatLng = userLocationMarker.getLatLng();
-        const distance = deliveryMap.distance(currentLatLng, [lat, lng]);
-        
-        if (distance < 5) {
-            console.log('📍 Localização muito próxima da anterior, pulando atualização visual');
-            // Ainda enviar para Firebase, mas não atualizar visualmente
-            saveLocationToFirebase(position);
-            return;
-        }
-        
-        // Remover marcador anterior
         deliveryMap.removeLayer(userLocationMarker);
     }
 
@@ -1798,12 +1569,9 @@ function updateUserLocation(position) {
 
     console.log('✅ Marcador de localização atualizado');
 
-    // Enviar localização para Firebase (com throttling)
-    throttledFirebaseUpdate(position);
+    // Enviar localização para Firebase
+    saveLocationToFirebase(position);
 }
-
-// Throttle para Firebase updates
-const throttledFirebaseUpdate = throttle(saveLocationToFirebase, 3000); // Max 1 update a cada 3s
 
 // Enviar localização para Firebase
 async function saveLocationToFirebase(position) {
@@ -1837,7 +1605,7 @@ async function saveLocationToFirebase(position) {
     }
 }
 
-// Parar rastreamento de localização (otimizado)
+// Parar rastreamento de localização - versão simplificada
 function stopLocationTracking() {
     if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
@@ -1850,23 +1618,12 @@ function stopLocationTracking() {
         userLocationMarker = null;
         console.log('🗑️ Marcador de localização removido');
     }
-    
-    // Limpar throttled functions
-    if (throttledFirebaseUpdate && throttledFirebaseUpdate.cancel) {
-        throttledFirebaseUpdate.cancel();
-    }
 }
 
-        // Carregar pedidos no mapa (otimizado)
+        // Carregar pedidos no mapa - versão simplificada
         function loadMapOrders() {
             if (!deliveryMap) {
                 console.log('🗺️ Mapa não inicializado ainda');
-                return;
-            }
-            
-            // Evitar atualizar durante zoom/pan
-            if (deliveryMap._animatingZoom || isRotating) {
-                console.log('🗺️ Pulando atualização durante animação');
                 return;
             }
             
@@ -1885,11 +1642,9 @@ function stopLocationTracking() {
             
             console.log(`🗺️ ${mapOrders.length} pedidos para exibir no mapa`);
             
-            // Usar requestAnimationFrame para otimizar renderização
-            requestAnimationFrame(() => {
-                mapOrders.forEach(assignment => {
-                    addOrderMarkerToMap(assignment);
-                });
+            // Adicionar marcadores
+            mapOrders.forEach(assignment => {
+                addOrderMarkerToMap(assignment);
             });
         }
 
@@ -2001,40 +1756,6 @@ function stopLocationTracking() {
         
         function toRad(degrees) {
             return degrees * (Math.PI / 180);
-        }
-
-        // Função utilitária de throttle melhorada
-        function throttle(func, limit) {
-            let inThrottle;
-            let lastFunc;
-            let lastRan;
-            
-            const throttledFunction = function() {
-                const context = this;
-                const args = arguments;
-                
-                if (!inThrottle) {
-                    func.apply(context, args);
-                    lastRan = Date.now();
-                    inThrottle = true;
-                } else {
-                    clearTimeout(lastFunc);
-                    lastFunc = setTimeout(function() {
-                        if ((Date.now() - lastRan) >= limit) {
-                            func.apply(context, args);
-                            lastRan = Date.now();
-                        }
-                    }, limit - (Date.now() - lastRan));
-                }
-            };
-            
-            // Adicionar função de cancelamento
-            throttledFunction.cancel = function() {
-                clearTimeout(lastFunc);
-                inThrottle = false;
-            };
-            
-            return throttledFunction;
         }
 
         // ============ NOTIFICAÇÕES SONORAS ============
