@@ -1051,11 +1051,7 @@
         let unsubscribeAssignments = null;
         let currentTab = 'pedidos';
 
-        // Variáveis do mapa
-        let deliveryMap = null;
-        let mapMarkers = new Map();
-
-        // Coordenadas da loja
+               // Coordenadas da loja
         const STORE_LOCATION = {
             lat: -5.748,
             lng: -35.256,
@@ -1257,12 +1253,7 @@
 
         // ============ FUNCIONALIDADES DO MAPA ============
 
- // Variáveis para rotação
-let mapRotation = 0;
-let isRotating = false;
-let lastTouchAngle = 0;
-
-        // Inicializar mapa - versão mais estável
+        // Inicializar mapa - versão limpa sem rotação
         function initializeMap() {
             if (deliveryMap) {
                 return; // Mapa já inicializado
@@ -1281,7 +1272,7 @@ let lastTouchAngle = 0;
             // Criar mapa centrado na loja
             deliveryMap = L.map('deliveryMap', mapOptions).setView([STORE_LOCATION.lat, STORE_LOCATION.lng], 14);
             
-            // Configurações padrão do tileLayer (sem otimizações que causam problemas)
+            // Configurações padrão do tileLayer
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors',
                 maxZoom: 18,
@@ -1324,9 +1315,6 @@ let lastTouchAngle = 0;
            setTimeout(() => {
            initializeUserLocation();
            }, 1000);
-
-            addRotationControls();
-            addGentleTouchRotation(); // ✅ Versão ainda mais suave
             
             console.log('✅ Mapa inicializado com sucesso');
         }
