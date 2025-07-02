@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpeza Firebase - Rivanilson</title>
+    
+    <!-- Firebase -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyBuRHTtuKgpQE_qAdMIbT9_9qbjh4cbLI8",
+            authDomain: "apiifood-e0d35.firebaseapp.com",
+            projectId: "apiifood-e0d35",
+            storageBucket: "apiifood-e0d35.firebasestorage.app",
+            messagingSenderId: "905864103175",
+            appId: "1:905864103175:web:a198383d3a66a7d2cd31a2"
+        };
+        
+        window.firebaseApp = initializeApp(firebaseConfig);
+        window.firebaseDb = getFirestore(window.firebaseApp);
+        window.collection = collection;
+        window.getDocs = getDocs;
+        window.doc = doc;
+        window.updateDoc = updateDoc;
+        window.deleteDoc = deleteDoc;
+        window.writeBatch = writeBatch;
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+        }
+        
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .action-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+        
+        .action-title {
+            color: #ffff00;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            font-weight: bold;
+        }
+        
+        .btn {
+            background: #00aa00;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+            margin: 0.25rem;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: #00dd00;
+            transform: translateY(-1px);
+        }
+        
+        .btn-danger {
+            background: #cc0000;
+        }
+        
+        .btn-danger:hover {
+            background: #ff0000;
+        }
+        
+        .btn-warning {
+            background: #ff8800;
+        }
+        
+        .btn-warning:hover {
+            background: #ffaa00;
+        }
+        
+        .results {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            margin: 0.25rem 0;
+            padding: 0.25rem;
+            border-left: 3px solid #00ff00;
+            padding-left: 0.75rem;
+        }
+        
+        .log-error {
+            border-left-color: #ff0000;
+            color: #ff6666;
+        }
+        
+        .log-warning {
+            border-left-color: #ffaa00;
+            color: #ffdd66;
+        }
+        
+        .log-success {
+            border-left-color: #00ff00;
+            color: #66ff66;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .stat-card {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00ff00;
+        }
+        
+        .stat-label {
+            color: #aaa;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 LIMPEZA FIREBASE - RIVANILSON</h1>
+            <p>Script para corrigir assignments com deliveryId incorreto</p>
+        </div>
+
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalAssignments">-</div>
+                <div class="stat-label">Total Assignments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="rafaelAssignments">-</div>
+                <div class="stat-label">Assignments "rafael"</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="rivanilsonAssignments">-</div>
+                <div class="stat-label">Assignments "rivanilson"</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeAssignments">-</div>
+                <div class="stat-label">Assignments Ativos</div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <div class="action-card">
+                <div class="action-title">📊 1. ANÁLISE</div>
+                <p>Analise os dados atuais do Firebase</p>
+                <button class="btn" onclick="analyzeFirebase()">🔍 Analisar Dados</button>
+            </div>
+
+            <div class="action-card">
+                <div class="action-title">🔄 2. MIGRAÇÃO</div>
+                <p>Migrar assignments "rafael" → "rivanilson"</p>
+                <button class="btn btn-warning" onclick="migrateRafaelToRivanilson()">🔄 Migrar Rafael→Rivanilson</button>
+            </div>
+
+            <div class="action-card">
+                <div class="action-title">🗑️ 3. LIMPEZA</div>
+                <p>Deletar assignments antigos do Rafael</p>
+                <button class="btn btn-danger" onclick="deleteRafaelAssignments()">🗑️ Deletar Rafael</button>
+            </div>
+
+            <div class="action-card">
+                <div class="action-title">✅ 4. TESTE</div>
+                <p>Criar assignment de teste para Rivanilson</p>
+                <button class="btn" onclick="createTestAssignment()">✅ Criar Teste</button>
+            </div>
+
+            <div class="action-card">
+                <div class="action-title">🧹 5. LIMPEZA GERAL</div>
+                <p>Limpar assignments antigos concluídos</p>
+                <button class="btn" onclick="cleanOldAssignments()">🧹 Limpar Antigos</button>
+            </div>
+
+            <div class="action-card">
+                <div class="action-title">💥 6. RESET TOTAL</div>
+                <p>⚠️ DELETAR TODOS OS ASSIGNMENTS</p>
+                <button class="btn btn-danger" onclick="resetAllAssignments()">💥 RESET TOTAL</button>
+            </div>
+        </div>
+
+        <div class="results" id="results">
+            <div class="log-entry">Pronto para executar comandos...</div>
+        </div>
+    </div>
+
+    <script>
+        // Funções de log
+        function addLog(message, type = 'log') {
+            const results = document.getElementById('results');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            results.appendChild(logEntry);
+            results.scrollTop = results.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStats(stats) {
+            document.getElementById('totalAssignments').textContent = stats.total || 0;
+            document.getElementById('rafaelAssignments').textContent = stats.rafael || 0;
+            document.getElementById('rivanilsonAssignments').textContent = stats.rivanilson || 0;
+            document.getElementById('activeAssignments').textContent = stats.active || 0;
+        }
+
+        // 1. Analisar dados do Firebase
+        async function analyzeFirebase() {
+            addLog('🔍 Iniciando análise do Firebase...', 'log');
+            
+            try {
+                const assignmentsRef = window.collection(window.firebaseDb, 'deliveryAssignments');
+                const snapshot = await window.getDocs(assignmentsRef);
+                
+                let stats = {
+                    total: 0,
+                    rafael: 0,
+                    rivanilson: 0,
+                    active: 0
+                };
+                
+                let rafaelDocs = [];
+                let rivanilsonDocs = [];
+                
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    stats.total++;
+                    
+                    if (data.deliveryId === 'rafael') {
+                        stats.rafael++;
+                        rafaelDocs.push({
+                            id: doc.id,
+                            orderId: data.order?.displayId || 'N/A',
+                            status: data.status,
+                            deliveryName: data.deliveryName
+                        });
+                    }
+                    
+                    if (data.deliveryId === 'rivanilson') {
+                        stats.rivanilson++;
+                        rivanilsonDocs.push({
+                            id: doc.id,
+                            orderId: data.order?.displayId || 'N/A',
+                            status: data.status
+                        });
+                    }
+                    
+                    if (['sent', 'accepted', 'dispatched'].includes(data.status)) {
+                        stats.active++;
+                    }
+                });
+                
+                updateStats(stats);
+                
+                addLog(`📊 ANÁLISE COMPLETA:`, 'success');
+                addLog(`   Total de assignments: ${stats.total}`, 'log');
+                addLog(`   Assignments com deliveryId="rafael": ${stats.rafael}`, 'warning');
+                addLog(`   Assignments com deliveryId="rivanilson": ${stats.rivanilson}`, 'success');
+                addLog(`   Assignments ativos: ${stats.active}`, 'log');
+                
+                if (rafaelDocs.length > 0) {
+                    addLog(`❌ PROBLEMA ENCONTRADO: ${rafaelDocs.length} assignments com deliveryId="rafael"`, 'error');
+                    rafaelDocs.slice(0, 5).forEach(doc => {
+                        addLog(`   📋 ${doc.id}: Pedido #${doc.orderId} (${doc.status}) - ${doc.deliveryName}`, 'warning');
+                    });
+                    if (rafaelDocs.length > 5) {
+                        addLog(`   ... e mais ${rafaelDocs.length - 5} assignments`, 'warning');
+                    }
+                } else {
+                    addLog(`✅ Nenhum assignment com deliveryId="rafael" encontrado`, 'success');
+                }
+                
+                if (rivanilsonDocs.length > 0) {
+                    addLog(`✅ ${rivanilsonDocs.length} assignments corretos para Rivanilson:`, 'success');
+                    rivanilsonDocs.slice(0, 3).forEach(doc => {
+                        addLog(`   📋 Pedido #${doc.orderId} (${doc.status})`, 'success');
+                    });
+                }
+                
+            } catch (error) {
+                addLog(`❌ Erro na análise: ${error.message}`, 'error');
+            }
+        }
+
+        // 2. Migrar assignments rafael → rivanilson
+        async function migrateRafaelToRivanilson() {
+            const confirmed = confirm('🔄 Migrar todos os assignments de "rafael" para "rivanilson"?\n\nIsto irá:\n- Manter todos os dados\n- Mudar apenas o deliveryId\n- Permitir que Rivanilson veja seus pedidos históricos');
+            
+            if (!confirmed) return;
+            
+            addLog('🔄 Iniciando migração rafael → rivanilson...', 'warning');
+            
+            try {
+                const assignmentsRef = window.collection(window.firebaseDb, 'deliveryAssignments');
+                const snapshot = await window.getDocs(assignmentsRef);
+                
+                const batch = window.writeBatch(window.firebaseDb);
+                let migratedCount = 0;
+                
+                snapshot.forEach((docSnapshot) => {
+                    const data = docSnapshot.data();
+                    
+                    if (data.deliveryId === 'rafael') {
+                        const docRef = window.doc(window.firebaseDb, 'deliveryAssignments', docSnapshot.id);
+                        
+                        batch.update(docRef, {
+                            deliveryId: 'rivanilson',
+                            deliveryName: 'Rivanilson', // Manter nome correto
+                            migratedAt: new Date().toISOString(),
+                            originalDeliveryId: 'rafael' // Backup
+                        });
+                        
+                        migratedCount++;
+                        addLog(`📋 Migrando: ${data.order?.displayId || docSnapshot.id} (${data.status})`, 'log');
+                    }
+                });
+                
+                if (migratedCount > 0) {
+                    await batch.commit();
+                    addLog(`✅ Migração concluída! ${migratedCount} assignments migrados`, 'success');
+                    addLog(`🎉 Rivanilson agora deve ver todos os seus pedidos!`, 'success');
+                    
+                    // Aguardar um pouco e re-analisar
+                    setTimeout(() => {
+                        analyzeFirebase();
+                    }, 2000);
+                } else {
+                    addLog(`ℹ️ Nenhum assignment com deliveryId="rafael" encontrado para migrar`, 'log');
+                }
+                
+            } catch (error) {
+                addLog(`❌ Erro na migração: ${error.message}`, 'error');
+            }
+        }
+
+        // 3. Deletar assignments do rafael
+        async function deleteRafaelAssignments() {
+            const confirmed = confirm('🗑️ DELETAR todos os assignments com deliveryId="rafael"?\n\n⚠️ ATENÇÃO: Esta ação não pode ser desfeita!\n\nIsso irá deletar permanentemente todos os assignments antigos do Rafael.');
+            
+            if (!confirmed) return;
+            
+            addLog('🗑️ Deletando assignments do rafael...', 'error');
+            
+            try {
+                const assignmentsRef = window.collection(window.firebaseDb, 'deliveryAssignments');
+                const snapshot = await window.getDocs(assignmentsRef);
+                
+                const batch = window.writeBatch(window.firebaseDb);
+                let deletedCount = 0;
+                
+                snapshot.forEach((docSnapshot) => {
+                    const data = docSnapshot.data();
+                    
+                    if (data.deliveryId === 'rafael') {
+                        const docRef = window.doc(window.firebaseDb, 'deliveryAssignments', docSnapshot.id);
+                        batch.delete(docRef);
+                        deletedCount++;
+                        addLog(`🗑️ Deletando: ${data.order?.displayId || docSnapshot.id}`, 'error');
+                    }
+                });
+                
+                if (deletedCount > 0) {
+                    await batch.commit();
+                    addLog(`✅ Deleção concluída! ${deletedCount} assignments deletados`, 'success');
+                    
+                    setTimeout(() => {
+                        analyzeFirebase();
+                    }, 2000);
+                } else {
+                    addLog(`ℹ️ Nenhum assignment com deliveryId="rafael" encontrado`, 'log');
+                }
+                
+            } catch (error) {
+                addLog(`❌ Erro na deleção: ${error.message}`, 'error');
+            }
+        }
+
+        // 4. Criar assignment de teste
+        async function createTestAssignment() {
+            addLog('✅ Criando assignment de teste para Rivanilson...', 'log');
+            
+            try {
+                const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                
+                const testOrderId = 'TEST-' + Date.now();
+                const testData = {
+                    deliveryId: 'rivanilson',
+                    deliveryName: 'Rivanilson',
+                    status: 'sent',
+                    assignedAt: new Date().toISOString(),
+                    updatedAt: serverTimestamp(),
+                    order: {
+                        id: testOrderId,
+                        displayId: 'TESTE',
+                        customer: {
+                            name: 'Cliente Teste'
+                        },
+                        total: {
+                            orderAmount: 25.50
+                        },
+                        createdAt: new Date().toISOString()
+                    }
+                };
+                
+                const docRef = doc(window.firebaseDb, 'deliveryAssignments', testOrderId);
+                await setDoc(docRef, testData);
+                
+                addLog(`✅ Assignment de teste criado: ${testOrderId}`, 'success');
+                addLog(`📱 Verifique se apareceu no app do Rivanilson!`, 'success');
+                
+                setTimeout(() => {
+                    analyzeFirebase();
+                }, 2000);
+                
+            } catch (error) {
+                addLog(`❌ Erro ao criar teste: ${error.message}`, 'error');
+            }
+        }
+
+        // 5. Limpar assignments antigos
+        async function cleanOldAssignments() {
+            const confirmed = confirm('🧹 Limpar assignments antigos (concluídos há mais de 7 dias)?');
+            
+            if (!confirmed) return;
+            
+            addLog('🧹 Limpando assignments antigos...', 'log');
+            
+            try {
+                const assignmentsRef = window.collection(window.firebaseDb, 'deliveryAssignments');
+                const snapshot = await window.getDocs(assignmentsRef);
+                
+                const batch = window.writeBatch(window.firebaseDb);
+                let cleanedCount = 0;
+                const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+                
+                snapshot.forEach((docSnapshot) => {
+                    const data = docSnapshot.data();
+                    
+                    if (data.status === 'concluded' && data.concludedAt) {
+                        const concludedDate = new Date(data.concludedAt);
+                        
+                        if (concludedDate < sevenDaysAgo) {
+                            const docRef = window.doc(window.firebaseDb, 'deliveryAssignments', docSnapshot.id);
+                            batch.delete(docRef);
+                            cleanedCount++;
+                        }
+                    }
+                });
+                
+                if (cleanedCount > 0) {
+                    await batch.commit();
+                    addLog(`✅ Limpeza concluída! ${cleanedCount} assignments antigos removidos`, 'success');
+                } else {
+                    addLog(`ℹ️ Nenhum assignment antigo encontrado para limpar`, 'log');
+                }
+                
+                setTimeout(() => {
+                    analyzeFirebase();
+                }, 2000);
+                
+            } catch (error) {
+                addLog(`❌ Erro na limpeza: ${error.message}`, 'error');
+            }
+        }
+
+        // 6. Reset total
+        async function resetAllAssignments() {
+            const confirmed = confirm('💥 DELETAR TODOS OS ASSIGNMENTS?\n\n⚠️ PERIGO: Esta ação irá deletar TODOS os assignments de TODOS os entregadores!\n\nIsto não pode ser desfeito!\n\nTem certeza?');
+            
+            if (!confirmed) return;
+            
+            const doubleConfirm = confirm('💥💥 CONFIRMAÇÃO FINAL 💥💥\n\nVocê está prestes a DELETAR TODOS OS DADOS!\n\nDigite "DELETAR TUDO" no próximo prompt para confirmar.');
+            
+            if (!doubleConfirm) return;
+            
+            const finalConfirm = prompt('Digite exatamente: DELETAR TUDO');
+            
+            if (finalConfirm !== 'DELETAR TUDO') {
+                addLog('❌ Reset cancelado - confirmação incorreta', 'error');
+                return;
+            }
+            
+            addLog('💥 DELETANDO TODOS OS ASSIGNMENTS...', 'error');
+            
+            try {
+                const assignmentsRef = window.collection(window.firebaseDb, 'deliveryAssignments');
+                const snapshot = await window.getDocs(assignmentsRef);
+                
+                const batch = window.writeBatch(window.firebaseDb);
+                
+                snapshot.forEach((docSnapshot) => {
+                    const docRef = window.doc(window.firebaseDb, 'deliveryAssignments', docSnapshot.id);
+                    batch.delete(docRef);
+                });
+                
+                await batch.commit();
+                addLog(`💥 RESET CONCLUÍDO! ${snapshot.size} assignments deletados`, 'error');
+                
+                setTimeout(() => {
+                    analyzeFirebase();
+                }, 2000);
+                
+            } catch (error) {
+                addLog(`❌ Erro no reset: ${error.message}`, 'error');
+            }
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('🔧 Sistema de limpeza Firebase iniciado', 'success');
+            addLog('📋 Execute "Analisar Dados" primeiro para ver o status atual', 'log');
+            
+            // Análise automática inicial
+            setTimeout(() => {
+                analyzeFirebase();
+            }, 1000);
+        });
+
+        // Tornar funções globais
+        window.analyzeFirebase = analyzeFirebase;
+        window.migrateRafaelToRivanilson = migrateRafaelToRivanilson;
+        window.deleteRafaelAssignments = deleteRafaelAssignments;
+        window.createTestAssignment = createTestAssignment;
+        window.cleanOldAssignments = cleanOldAssignments;
+        window.resetAllAssignments = resetAllAssignments;
+    </script>
+</body>
+</html>
