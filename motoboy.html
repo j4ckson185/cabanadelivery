@@ -863,19 +863,9 @@
     background: #e4e4e4;
 }
 
-/* Permitir rotação do mapa - versão simplificada */
+/* CSS básico sem interferir nos tiles */
 .leaflet-container {
     touch-action: pan-x pan-y pinch-zoom !important;
-}
-
-/* Otimizações básicas para tiles do mapa */
-.leaflet-tile {
-    image-rendering: auto; /* ✅ Mudado para auto para melhor compatibilidade */
-}
-
-/* Suavizar animações de zoom */
-.leaflet-zoom-animated {
-    transition: transform 0.25s ease-out;
 }
 
 /* Toast de notificação de som */
@@ -1260,8 +1250,8 @@
                     initializeMap();
                     setTimeout(() => {
                         loadMapOrders();
-                    }, 300);
-                }, 100);
+                    }, 500); // ✅ Delay maior para estabilizar
+                }, 200);
             }
         }
 
@@ -1272,7 +1262,7 @@ let mapRotation = 0;
 let isRotating = false;
 let lastTouchAngle = 0;
 
-        // Inicializar mapa
+        // Inicializar mapa - versão mais estável
         function initializeMap() {
             if (deliveryMap) {
                 return; // Mapa já inicializado
@@ -1280,40 +1270,23 @@ let lastTouchAngle = 0;
             
             console.log('🗺️ Inicializando mapa do entregador...');
             
-            // Configurações mais simples para evitar conflitos
+            // Configurações básicas sem interferir no funcionamento nativo
             const mapOptions = {
-                preferCanvas: true,
                 zoomControl: true,
                 attributionControl: true,
-                fadeAnimation: true, // ✅ Reabilitado para suavizar carregamento
-                zoomAnimation: true,
-                zoomAnimationThreshold: 4,
-                wheelDebounceTime: 40, // ✅ Reduzido para mais responsivo
-                wheelPxPerZoomLevel: 60
+                fadeAnimation: true,
+                zoomAnimation: true
             };
             
             // Criar mapa centrado na loja
             deliveryMap = L.map('deliveryMap', mapOptions).setView([STORE_LOCATION.lat, STORE_LOCATION.lng], 14);
             
-            // Configurações mais conservadoras do tileLayer
-            const tileLayerOptions = {
+            // Configurações padrão do tileLayer (sem otimizações que causam problemas)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors',
                 maxZoom: 18,
-                minZoom: 12,
-                tileSize: 256,
-                zoomOffset: 0,
-                keepBuffer: 2, // ✅ Reduzido para evitar conflitos
-                updateWhenIdle: true, // ✅ Mudado para true para estabilidade
-                updateWhenZooming: false, // ✅ Desabilitado para evitar conflitos
-                updateInterval: 200 // ✅ Aumentado para estabilidade
-            };
-            
-            // Adicionar tiles do OpenStreetMap
-            const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', tileLayerOptions);
-            tileLayer.addTo(deliveryMap);
-            
-            // ✅ REMOVIDO: Listeners problemáticos que interferiam com zoom
-            // Manter apenas listeners essenciais
+                minZoom: 12
+            }).addTo(deliveryMap);
             
             // Adicionar marcador da loja
             const storeIcon = L.divIcon({
@@ -1353,7 +1326,7 @@ let lastTouchAngle = 0;
            }, 1000);
 
             addRotationControls();
-            addSimpleTouchRotation(); // ✅ Versão simplificada que funciona
+            addGentleTouchRotation(); // ✅ Versão ainda mais suave
             
             console.log('✅ Mapa inicializado com sucesso');
         }
@@ -1406,101 +1379,126 @@ function addRotationControls() {
     mapContainer.appendChild(controlsDiv);
 }
 
-// Rotacionar mapa - versão simplificada
+// Rotacionar mapa suavemente
 function rotateMap(degrees) {
     mapRotation += degrees;
     applyRotation();
+    
+    // Forçar atualização do mapa após rotação por botão
+    setTimeout(() => {
+        if (deliveryMap) {
+            deliveryMap.invalidateSize();
+        }
+    }, 200);
 }
 
-// Resetar rotação - versão simplificada
+// Resetar rotação suavemente
 function resetMapRotation() {
     mapRotation = 0;
     isRotating = false;
     applyRotation();
+    
+    // Dar tempo para o mapa se ajustar
+    setTimeout(() => {
+        if (deliveryMap) {
+            deliveryMap.invalidateSize();
+        }
+    }, 200);
 }
 
-// Aplicar rotação - versão simplificada
+// Aplicar rotação de forma muito suave
 function applyRotation() {
     const mapPane = deliveryMap.getPane('mapPane');
     if (mapPane) {
-        // Aplicar rotação apenas no conteúdo interno do mapa
+        // Rotação simples sem otimizações que causam problemas
         mapPane.style.transform = `rotate(${mapRotation}deg)`;
         mapPane.style.transformOrigin = 'center center';
     }
     
-    console.log(`🔄 Mapa rotacionado: ${mapRotation}°`);
+    // Aguardar um pouco antes de permitir que o mapa atualize tiles
+    setTimeout(() => {
+        if (deliveryMap) {
+            deliveryMap.invalidateSize();
+        }
+    }, 100);
 }
 
-// Rotação por touch corrigida para mobile
-function addSimpleTouchRotation() {
+// Rotação por touch muito suave que não interfere com tiles
+function addGentleTouchRotation() {
     const mapContainer = deliveryMap.getContainer();
     let initialAngle = 0;
     let isRotatingNow = false;
-    let rotationStarted = false;
-    let startTouches = [];
+    let rotationThreshold = 15; // Threshold maior para ser mais conservador
+    let touchStartTime = 0;
     
     mapContainer.addEventListener('touchstart', (e) => {
         if (e.touches.length === 2) {
-            startTouches = Array.from(e.touches);
-            initialAngle = getTouchAngle(startTouches[0], startTouches[1]);
+            initialAngle = getTouchAngle(e.touches[0], e.touches[1]);
             isRotatingNow = false;
-            rotationStarted = false;
-            console.log('🔄 Iniciando detecção de rotação...');
+            touchStartTime = Date.now();
         }
     }, { passive: true });
     
     mapContainer.addEventListener('touchmove', (e) => {
         if (e.touches.length === 2) {
             const currentAngle = getTouchAngle(e.touches[0], e.touches[1]);
-            const angleDiff = currentAngle - initialAngle;
+            let angleDiff = currentAngle - initialAngle;
             
-            // Detectar rotação com threshold menor e mais sensível
-            if (!rotationStarted && Math.abs(angleDiff) > 5) {
-                // Verificar se é realmente rotação (diferença angular consistente)
-                rotationStarted = true;
+            // Normalizar diferença de ângulo
+            if (angleDiff > 180) angleDiff -= 360;
+            if (angleDiff < -180) angleDiff += 360;
+            
+            // Só ativar rotação se:
+            // 1. Movimento angular grande o suficiente
+            // 2. Usuário está tentando rotacionar há mais de 200ms
+            const timeElapsed = Date.now() - touchStartTime;
+            
+            if (!isRotatingNow && Math.abs(angleDiff) > rotationThreshold && timeElapsed > 200) {
                 isRotatingNow = true;
                 isRotating = true;
-                console.log('🔄 Rotação detectada e iniciada!');
+                console.log('🔄 Rotação gentil iniciada');
+                
+                // APENAS prevenir se rotação for muito clara
+                if (Math.abs(angleDiff) > 20) {
+                    e.preventDefault();
+                }
             }
             
-            if (rotationStarted && isRotatingNow) {
-                // Prevenir zoom/pan do mapa durante rotação
-                e.preventDefault();
-                
-                // Aplicar rotação de forma mais suave e responsiva
-                const rotationAmount = angleDiff * 0.8; // Mais sensível
-                mapRotation += rotationAmount;
-                
-                // Normalizar rotação para evitar valores muito grandes
-                while (mapRotation > 360) mapRotation -= 360;
-                while (mapRotation < -360) mapRotation += 360;
-                
+            if (isRotatingNow && Math.abs(angleDiff) > 2) {
+                // Aplicar rotação muito suave
+                mapRotation += angleDiff * 0.3; // Menos sensível
                 applyRotation();
-                
-                // Atualizar ângulo de referência
                 initialAngle = currentAngle;
                 
-                console.log(`🔄 Rotacionando: ${mapRotation.toFixed(1)}°`);
+                // Só prevenir se movimento de rotação for óbvio
+                if (Math.abs(angleDiff) > 8) {
+                    e.preventDefault();
+                }
             }
         }
     }, { passive: false });
     
     mapContainer.addEventListener('touchend', (e) => {
         if (e.touches.length < 2) {
-            if (rotationStarted) {
-                console.log('🔄 Rotação finalizada');
+            if (isRotatingNow) {
+                console.log('🔄 Rotação gentil finalizada');
+                
+                // Forçar atualização dos tiles após rotação
+                setTimeout(() => {
+                    if (deliveryMap) {
+                        deliveryMap.invalidateSize();
+                        console.log('🗺️ Tiles atualizados após rotação');
+                    }
+                }, 300);
             }
             isRotatingNow = false;
             isRotating = false;
-            rotationStarted = false;
         }
     }, { passive: true });
     
     mapContainer.addEventListener('touchcancel', (e) => {
-        console.log('🔄 Touch cancelado - parando rotação');
         isRotatingNow = false;
         isRotating = false;
-        rotationStarted = false;
     }, { passive: true });
 }
 
@@ -1654,10 +1652,17 @@ function stopLocationTracking() {
     }
 }
 
-        // Carregar pedidos no mapa - versão simplificada
+        // Carregar pedidos no mapa de forma suave
         function loadMapOrders() {
             if (!deliveryMap) {
                 console.log('🗺️ Mapa não inicializado ainda');
+                return;
+            }
+            
+            // Não carregar se estiver rotacionando para evitar conflitos
+            if (isRotating) {
+                console.log('🗺️ Pulando carregamento durante rotação');
+                setTimeout(() => loadMapOrders(), 1000);
                 return;
             }
             
@@ -1676,9 +1681,11 @@ function stopLocationTracking() {
             
             console.log(`🗺️ ${mapOrders.length} pedidos para exibir no mapa`);
             
-            // Adicionar marcadores
-            mapOrders.forEach(assignment => {
-                addOrderMarkerToMap(assignment);
+            // Adicionar marcadores com delay para suavizar
+            mapOrders.forEach((assignment, index) => {
+                setTimeout(() => {
+                    addOrderMarkerToMap(assignment);
+                }, index * 50); // 50ms entre cada marcador
             });
         }
 
