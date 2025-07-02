@@ -862,9 +862,43 @@
     background: #e4e4e4;
 }
 
-/* Permitir rotação do mapa */
+/* Permitir rotação do mapa - versão otimizada */
 .leaflet-container {
     touch-action: pan-x pan-y pinch-zoom !important;
+    /* Otimizações para performance */
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-perspective: 1000;
+    perspective: 1000;
+}
+
+/* Otimizações para tiles do mapa */
+.leaflet-tile-container {
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+}
+
+.leaflet-tile {
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+    image-rendering: optimizeSpeed;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: optimize-contrast;
+    -ms-interpolation-mode: nearest-neighbor;
+}
+
+/* Otimizar marcadores para performance */
+.leaflet-marker-icon {
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+}
+
+/* Suavizar animações de zoom */
+.leaflet-zoom-animated {
+    -webkit-transition: -webkit-transform 0.25s cubic-bezier(0, 0, 0.25, 1);
+    transition: transform 0.25s cubic-bezier(0, 0, 0.25, 1);
 }
 
 /* Toast de notificação de som */
@@ -1222,16 +1256,21 @@
             });
         }
 
-        // Trocar abas
+        // Trocar abas (otimizado)
         function switchTab(tabName) {
             // Atualizar botões de navegação
             document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
 
-            // Parar localização se sair da aba do mapa
-if (currentTab === 'mapa' && tabName !== 'mapa') {
-    stopLocationTracking();
-}
+            // Parar localização e limpar timers se sair da aba do mapa
+            if (currentTab === 'mapa' && tabName !== 'mapa') {
+                stopLocationTracking();
+                
+                // Limpar todos os timers e debounced functions
+                if (window.rotationDebounceTimer) {
+                    clearTimeout(window.rotationDebounceTimer);
+                }
+            }
             
             // Esconder todas as abas
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -1247,7 +1286,11 @@ if (currentTab === 'mapa' && tabName !== 'mapa') {
                 // Inicializar mapa quando trocar para aba do mapa
                 setTimeout(() => {
                     initializeMap();
-                    loadMapOrders();
+                    
+                    // Aguardar mais um pouco antes de carregar pedidos para garantir estabilidade
+                    setTimeout(() => {
+                        loadMapOrders();
+                    }, 200);
                 }, 100);
             }
         }
@@ -1267,14 +1310,71 @@ let lastTouchAngle = 0;
             
             console.log('🗺️ Inicializando mapa do entregador...');
             
-            // Criar mapa centrado na loja
-            deliveryMap = L.map('deliveryMap').setView([STORE_LOCATION.lat, STORE_LOCATION.lng], 14);
+            // Configurações otimizadas para performance no mobile
+            const mapOptions = {
+                preferCanvas: true, // Usar Canvas ao invés de SVG para melhor performance
+                zoomControl: true,
+                attributionControl: true,
+                fadeAnimation: false, // Desabilitar fade para evitar flickers
+                zoomAnimation: true,
+                zoomAnimationThreshold: 4,
+                markerZoomAnimation: false, // Otimizar animações de marcadores
+                wheelDebounceTime: 60, // Debounce para wheel
+                wheelPxPerZoomLevel: 60
+            };
             
-            // Adicionar tiles do OpenStreetMap
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            // Criar mapa centrado na loja
+            deliveryMap = L.map('deliveryMap', mapOptions).setView([STORE_LOCATION.lat, STORE_LOCATION.lng], 14);
+            
+            // Configurações otimizadas do tileLayer para mobile
+            const tileLayerOptions = {
                 attribution: '© OpenStreetMap contributors',
                 maxZoom: 18,
-            }).addTo(deliveryMap);
+                minZoom: 12,
+                tileSize: 256,
+                zoomOffset: 0,
+                keepBuffer: 4, // Manter mais tiles em buffer
+                updateWhenIdle: false, // Atualizar durante movimento
+                updateWhenZooming: true, // Atualizar durante zoom
+                updateInterval: 100, // Intervalo de atualização otimizado
+                crossOrigin: true,
+                // Pré-carregar tiles adjacentes
+                bounds: L.latLngBounds(
+                    [STORE_LOCATION.lat - 0.06, STORE_LOCATION.lng - 0.06],
+                    [STORE_LOCATION.lat + 0.06, STORE_LOCATION.lng + 0.06]
+                )
+            };
+            
+            // Adicionar tiles do OpenStreetMap com configurações otimizadas
+            const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', tileLayerOptions);
+            tileLayer.addTo(deliveryMap);
+            
+            // Eventos otimizados para performance
+            let rotationDebounceTimer = null;
+            
+            // Listener otimizado para moveend (quando para de mover)
+            deliveryMap.on('moveend', debounce(() => {
+                console.log('🗺️ Mapa parou de mover - atualizando marcadores se necessário');
+            }, 200));
+            
+            // Listener otimizado para zoomend
+            deliveryMap.on('zoomend', debounce(() => {
+                console.log('🗺️ Zoom finalizado - nível:', deliveryMap.getZoom());
+                // Reajustar rotação após zoom se necessário
+                if (mapRotation !== 0) {
+                    clearTimeout(rotationDebounceTimer);
+                    rotationDebounceTimer = setTimeout(() => {
+                        applyRotation();
+                    }, 100);
+                }
+            }, 150));
+            
+            // Evitar conflitos durante zoom
+            deliveryMap.on('zoomstart', () => {
+                if (isRotating) {
+                    isRotating = false; // Parar rotação durante zoom
+                }
+            });
             
             // Adicionar marcador da loja
             const storeIcon = L.divIcon({
@@ -1314,9 +1414,22 @@ let lastTouchAngle = 0;
            }, 1000);
 
             addRotationControls();
-            addTouchRotation();
+            addOptimizedTouchRotation(); // Versão otimizada
             
             console.log('✅ Mapa inicializado com sucesso');
+        }
+
+        // Função utilitária de debounce
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
         }
 
         // Adicionar controles de rotação
@@ -1366,41 +1479,58 @@ function resetMapRotation() {
     applyRotation();
 }
 
-// Aplicar rotação
+// Aplicar rotação otimizada
 function applyRotation() {
     // Aplicar rotação apenas no conteúdo do mapa, não no container
     const mapPane = deliveryMap.getPane('mapPane');
     if (mapPane) {
-        mapPane.style.transform = `rotate(${mapRotation}deg)`;
+        // Usar transform3d para melhor performance
+        mapPane.style.transform = `translate3d(0, 0, 0) rotate(${mapRotation}deg)`;
         mapPane.style.transformOrigin = 'center center';
+        mapPane.style.willChange = 'transform'; // Otimização para animações
     }
     
     console.log(`🔄 Mapa rotacionado: ${mapRotation}°`);
 }
 
-// Adicionar rotação por touch
-function addTouchRotation() {
+// Versão otimizada da rotação por touch
+function addOptimizedTouchRotation() {
     const mapContainer = deliveryMap.getContainer();
     let touches = [];
+    let rotationStarted = false;
+    
+    // Throttle para otimizar performance
+    const throttledRotation = throttle((angleDiff) => {
+        if (!deliveryMap._zoom || deliveryMap._animatingZoom) {
+            return; // Não rotacionar durante zoom
+        }
+        
+        mapRotation += angleDiff * 0.3; // Reduzir sensibilidade
+        applyRotation();
+    }, 16); // ~60fps
     
     mapContainer.addEventListener('touchstart', (e) => {
         if (e.touches.length === 2) {
             e.preventDefault();
+            rotationStarted = true;
             isRotating = true;
             touches = Array.from(e.touches);
             lastTouchAngle = getTouchAngle(touches[0], touches[1]);
+            
+            // Parar zoom durante rotação
+            deliveryMap.touchZoom.disable();
         }
     }, { passive: false });
     
     mapContainer.addEventListener('touchmove', (e) => {
-        if (isRotating && e.touches.length === 2) {
+        if (rotationStarted && isRotating && e.touches.length === 2) {
             e.preventDefault();
             const currentAngle = getTouchAngle(e.touches[0], e.touches[1]);
             const angleDiff = currentAngle - lastTouchAngle;
             
-            if (Math.abs(angleDiff) < 180) {
-                mapRotation += angleDiff * 0.5;
-                applyRotation();
+            // Filtrar movimentos muito pequenos ou muito grandes
+            if (Math.abs(angleDiff) > 2 && Math.abs(angleDiff) < 90) {
+                throttledRotation(angleDiff);
             }
             
             lastTouchAngle = currentAngle;
@@ -1409,8 +1539,20 @@ function addTouchRotation() {
     
     mapContainer.addEventListener('touchend', (e) => {
         if (e.touches.length < 2) {
+            rotationStarted = false;
             isRotating = false;
+            
+            // Reabilitar zoom após rotação
+            setTimeout(() => {
+                deliveryMap.touchZoom.enable();
+            }, 100);
         }
+    });
+    
+    mapContainer.addEventListener('touchcancel', () => {
+        rotationStarted = false;
+        isRotating = false;
+        deliveryMap.touchZoom.enable();
     });
 }
 
@@ -1434,12 +1576,15 @@ function initializeUserLocation() {
 
     console.log('📍 Iniciando rastreamento de localização...');
 
-// Opções de geolocalização para entregador em movimento
-const options = {
-    enableHighAccuracy: true,     // Máxima precisão (GPS)
-    timeout: 5000,               // 5 segundos para obter localização
-    maximumAge: 2000             // ✅ Apenas 2 segundos de cache
-};
+    // Opções otimizadas para entregador em movimento
+    const options = {
+        enableHighAccuracy: true,     // Máxima precisão (GPS)
+        timeout: 8000,               // 8 segundos para obter localização
+        maximumAge: 5000             // ✅ 5 segundos de cache (otimizado)
+    };
+
+    // Debounce para atualizações de localização
+    const debouncedLocationUpdate = debounce(updateUserLocation, 2000); // Max 1 atualização a cada 2s
 
     // Obter localização inicial
     navigator.geolocation.getCurrentPosition(
@@ -1453,19 +1598,23 @@ const options = {
         options
     );
 
-    // Rastrear localização continuamente
+    // Rastrear localização continuamente com throttling
     watchId = navigator.geolocation.watchPosition(
         (position) => {
-            updateUserLocation(position);
+            // Usar versão com debounce para evitar muitas atualizações
+            debouncedLocationUpdate(position);
         },
         (error) => {
             console.warn('⚠️ Erro no rastreamento:', error.message);
         },
-        options
+        {
+            ...options,
+            maximumAge: 3000 // Cache um pouco menor para watch
+        }
     );
 }
 
-// Atualizar marcador de localização do usuário
+// Atualizar marcador de localização do usuário (otimizado)
 function updateUserLocation(position) {
     if (!deliveryMap) return;
 
@@ -1475,8 +1624,19 @@ function updateUserLocation(position) {
 
     console.log(`📍 Localização atualizada: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${Math.round(accuracy)}m)`);
 
-    // Remover marcador anterior se existir
+    // Otimização: Só atualizar marcador se houve mudança significativa (>5 metros)
     if (userLocationMarker) {
+        const currentLatLng = userLocationMarker.getLatLng();
+        const distance = deliveryMap.distance(currentLatLng, [lat, lng]);
+        
+        if (distance < 5) {
+            console.log('📍 Localização muito próxima da anterior, pulando atualização visual');
+            // Ainda enviar para Firebase, mas não atualizar visualmente
+            saveLocationToFirebase(position);
+            return;
+        }
+        
+        // Remover marcador anterior
         deliveryMap.removeLayer(userLocationMarker);
     }
 
@@ -1507,9 +1667,12 @@ function updateUserLocation(position) {
 
     console.log('✅ Marcador de localização atualizado');
 
-// Enviar localização para Firebase para o mapa principal
-saveLocationToFirebase(position);
+    // Enviar localização para Firebase (com throttling)
+    throttledFirebaseUpdate(position);
 }
+
+// Throttle para Firebase updates
+const throttledFirebaseUpdate = throttle(saveLocationToFirebase, 3000); // Max 1 update a cada 3s
 
 // Enviar localização para Firebase
 async function saveLocationToFirebase(position) {
@@ -1543,7 +1706,7 @@ async function saveLocationToFirebase(position) {
     }
 }
 
-// Parar rastreamento de localização
+// Parar rastreamento de localização (otimizado)
 function stopLocationTracking() {
     if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
@@ -1556,7 +1719,192 @@ function stopLocationTracking() {
         userLocationMarker = null;
         console.log('🗑️ Marcador de localização removido');
     }
+    
+    // Limpar throttled functions
+    if (throttledFirebaseUpdate && throttledFirebaseUpdate.cancel) {
+        throttledFirebaseUpdate.cancel();
+    }
 }
+
+        // Carregar pedidos no mapa (otimizado)
+        function loadMapOrders() {
+            if (!deliveryMap) {
+                console.log('🗺️ Mapa não inicializado ainda');
+                return;
+            }
+            
+            // Evitar atualizar durante zoom/pan
+            if (deliveryMap._animatingZoom || isRotating) {
+                console.log('🗺️ Pulando atualização durante animação');
+                return;
+            }
+            
+            console.log('🗺️ Carregando pedidos no mapa...');
+            
+            // Limpar marcadores existentes (exceto loja e localização do usuário)
+            mapMarkers.forEach(marker => {
+                deliveryMap.removeLayer(marker);
+            });
+            mapMarkers.clear();
+            
+            // Filtrar apenas pedidos aceitos ou despachados pelo entregador
+            const mapOrders = Array.from(assignments.values()).filter(assignment => 
+                assignment.status === 'accepted' || assignment.status === 'dispatched'
+            );
+            
+            console.log(`🗺️ ${mapOrders.length} pedidos para exibir no mapa`);
+            
+            // Usar requestAnimationFrame para otimizar renderização
+            requestAnimationFrame(() => {
+                mapOrders.forEach(assignment => {
+                    addOrderMarkerToMap(assignment);
+                });
+            });
+        }
+
+        // Adicionar marcador do pedido no mapa
+        function addOrderMarkerToMap(assignment) {
+            const order = assignment.order;
+            
+            console.log(`🔍 DEBUG Pedido ${order.displayId}:`, {
+                orderType: order.orderType,
+                hasDelivery: !!order.delivery,
+                hasDeliveryAddress: !!order.delivery?.deliveryAddress,
+                deliveryData: order.delivery,
+                orderKeys: Object.keys(order)
+            });
+            
+            // Verificar se é entrega e tem endereço - aceitar tanto DELIVERY quanto undefined (padrão é entrega)
+            const isDelivery = !order.orderType || order.orderType === 'DELIVERY';
+            const hasAddress = order.delivery && order.delivery.deliveryAddress;
+            
+            if (!isDelivery || !hasAddress) {
+                console.log(`📍 Pedido ${order.displayId} - isDelivery: ${isDelivery}, hasAddress: ${hasAddress}`);
+                return;
+            }
+            
+            const address = order.delivery.deliveryAddress;
+            if (!address.coordinates?.latitude || !address.coordinates?.longitude) {
+                console.warn(`📍 Pedido ${order.displayId} sem coordenadas válidas`);
+                return;
+            }
+            
+            const lat = address.coordinates.latitude;
+            const lng = address.coordinates.longitude;
+            
+            // Verificar se está dentro dos limites de 6km
+            const distance = getDistance(STORE_LOCATION.lat, STORE_LOCATION.lng, lat, lng);
+            if (distance > 6) {
+                console.warn(`📍 Pedido ${order.displayId} está muito longe (${distance.toFixed(1)}km)`);
+                return;
+            }
+            
+            const color = getMarkerColor(assignment.status);
+            
+            // Marcador quadrado com número do pedido
+            const markerIcon = L.divIcon({
+                html: `<div style="
+                    background: ${color}; 
+                    color: white; 
+                    width: 35px; 
+                    height: 35px; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    font-size: 12px;
+                    font-weight: bold;
+                    border: 3px solid white;
+                    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+                    border-radius: 4px;
+                ">${order.displayId}</div>`,
+                iconSize: [35, 35],
+                iconAnchor: [17.5, 17.5]
+            });
+            
+            const customerName = order.customer?.name || 'Cliente';
+            const orderTotal = formatCurrency(order.total?.orderAmount || 0);
+            const statusLabel = assignment.status === 'accepted' ? 'Aceito' : 'Despachado';
+            
+            const popupContent = `
+                <div style="min-width: 200px;">
+                    <h4>📦 Pedido #${order.displayId}</h4>
+                    <p><strong>👤 Cliente:</strong> ${customerName}</p>
+                    <p><strong>💰 Total:</strong> ${orderTotal}</p>
+                    <p><strong>📍 Status:</strong> ${statusLabel}</p>
+                    <p><strong>📍 Endereço:</strong><br>
+                    ${address.formattedAddress || `${address.streetName || ''} ${address.streetNumber || ''}`}</p>
+                    <button onclick="openOrderModal('${assignment.id}')" 
+                            style="margin-top: 10px; padding: 8px 16px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Ver Detalhes
+                    </button>
+                </div>
+            `;
+            
+            const marker = L.marker([lat, lng], { icon: markerIcon })
+                .bindPopup(popupContent)
+                .addTo(deliveryMap);
+            
+            mapMarkers.set(assignment.id, marker);
+            
+            console.log(`📍 Marcador adicionado para pedido ${order.displayId} (${statusLabel})`);
+        }
+
+        // Obter cor do marcador baseado no status
+        function getMarkerColor(status) {
+            if (status === 'accepted') return '#eab308'; // Amarelo - aceito
+            if (status === 'dispatched') return '#06b6d4'; // Azul piscina - despachado
+            return '#6b7280'; // Cinza como fallback
+        }
+
+        // Calcular distância entre dois pontos (em km)
+        function getDistance(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Raio da Terra em km
+            const dLat = toRad(lat2 - lat1);
+            const dLng = toRad(lng2 - lng1);
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                    Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+        
+        function toRad(degrees) {
+            return degrees * (Math.PI / 180);
+        }
+
+        // Função utilitária de throttle melhorada
+        function throttle(func, limit) {
+            let inThrottle;
+            let lastFunc;
+            let lastRan;
+            
+            const throttledFunction = function() {
+                const context = this;
+                const args = arguments;
+                
+                if (!inThrottle) {
+                    func.apply(context, args);
+                    lastRan = Date.now();
+                    inThrottle = true;
+                } else {
+                    clearTimeout(lastFunc);
+                    lastFunc = setTimeout(function() {
+                        if ((Date.now() - lastRan) >= limit) {
+                            func.apply(context, args);
+                            lastRan = Date.now();
+                        }
+                    }, limit - (Date.now() - lastRan));
+                }
+            };
+            
+            // Adicionar função de cancelamento
+            throttledFunction.cancel = function() {
+                clearTimeout(lastFunc);
+                inThrottle = false;
+            };
+            
+            return throttledFunction;
+        }
 
         // ============ NOTIFICAÇÕES SONORAS ============
 
@@ -1675,143 +2023,6 @@ function notifyNewOrder() {
     }
 }
 
-        // Carregar pedidos no mapa
-        function loadMapOrders() {
-            if (!deliveryMap) {
-                console.log('🗺️ Mapa não inicializado ainda');
-                return;
-            }
-            
-            console.log('🗺️ Carregando pedidos no mapa...');
-            
-            // Limpar marcadores existentes (exceto loja)
-            mapMarkers.forEach(marker => {
-                deliveryMap.removeLayer(marker);
-            });
-            mapMarkers.clear();
-            
-            // Filtrar apenas pedidos aceitos ou despachados pelo entregador
-            const mapOrders = Array.from(assignments.values()).filter(assignment => 
-                assignment.status === 'accepted' || assignment.status === 'dispatched'
-            );
-            
-            console.log(`🗺️ ${mapOrders.length} pedidos para exibir no mapa`);
-            
-            mapOrders.forEach(assignment => {
-                addOrderMarkerToMap(assignment);
-            });
-        }
-
-        // Adicionar marcador do pedido no mapa
-        function addOrderMarkerToMap(assignment) {
-            const order = assignment.order;
-            
-            console.log(`🔍 DEBUG Pedido ${order.displayId}:`, {
-                orderType: order.orderType,
-                hasDelivery: !!order.delivery,
-                hasDeliveryAddress: !!order.delivery?.deliveryAddress,
-                deliveryData: order.delivery,
-                orderKeys: Object.keys(order)
-            });
-            
-            // Verificar se é entrega e tem endereço - aceitar tanto DELIVERY quanto undefined (padrão é entrega)
-            const isDelivery = !order.orderType || order.orderType === 'DELIVERY';
-            const hasAddress = order.delivery && order.delivery.deliveryAddress;
-            
-            if (!isDelivery || !hasAddress) {
-                console.log(`📍 Pedido ${order.displayId} - isDelivery: ${isDelivery}, hasAddress: ${hasAddress}`);
-                return;
-            }
-            
-            const address = order.delivery.deliveryAddress;
-            if (!address.coordinates?.latitude || !address.coordinates?.longitude) {
-                console.warn(`📍 Pedido ${order.displayId} sem coordenadas válidas`);
-                return;
-            }
-            
-            const lat = address.coordinates.latitude;
-            const lng = address.coordinates.longitude;
-            
-            // Verificar se está dentro dos limites de 6km
-            const distance = getDistance(STORE_LOCATION.lat, STORE_LOCATION.lng, lat, lng);
-            if (distance > 6) {
-                console.warn(`📍 Pedido ${order.displayId} está muito longe (${distance.toFixed(1)}km)`);
-                return;
-            }
-            
-            const color = getMarkerColor(assignment.status);
-            
-            // Marcador quadrado com número do pedido
-            const markerIcon = L.divIcon({
-                html: `<div style="
-                    background: ${color}; 
-                    color: white; 
-                    width: 35px; 
-                    height: 35px; 
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    font-size: 12px;
-                    font-weight: bold;
-                    border: 3px solid white;
-                    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
-                    border-radius: 4px;
-                ">${order.displayId}</div>`,
-                iconSize: [35, 35],
-                iconAnchor: [17.5, 17.5]
-            });
-            
-            const customerName = order.customer?.name || 'Cliente';
-            const orderTotal = formatCurrency(order.total?.orderAmount || 0);
-            const statusLabel = assignment.status === 'accepted' ? 'Aceito' : 'Despachado';
-            
-            const popupContent = `
-                <div style="min-width: 200px;">
-                    <h4>📦 Pedido #${order.displayId}</h4>
-                    <p><strong>👤 Cliente:</strong> ${customerName}</p>
-                    <p><strong>💰 Total:</strong> ${orderTotal}</p>
-                    <p><strong>📍 Status:</strong> ${statusLabel}</p>
-                    <p><strong>📍 Endereço:</strong><br>
-                    ${address.formattedAddress || `${address.streetName || ''} ${address.streetNumber || ''}`}</p>
-                    <button onclick="openOrderModal('${assignment.id}')" 
-                            style="margin-top: 10px; padding: 8px 16px; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                        Ver Detalhes
-                    </button>
-                </div>
-            `;
-            
-            const marker = L.marker([lat, lng], { icon: markerIcon })
-                .bindPopup(popupContent)
-                .addTo(deliveryMap);
-            
-            mapMarkers.set(assignment.id, marker);
-            
-            console.log(`📍 Marcador adicionado para pedido ${order.displayId} (${statusLabel})`);
-        }
-
-        // Obter cor do marcador baseado no status
-        function getMarkerColor(status) {
-            if (status === 'accepted') return '#eab308'; // Amarelo - aceito
-            if (status === 'dispatched') return '#06b6d4'; // Azul piscina - despachado
-            return '#6b7280'; // Cinza como fallback
-        }
-
-        // Calcular distância entre dois pontos (em km)
-        function getDistance(lat1, lng1, lat2, lng2) {
-            const R = 6371; // Raio da Terra em km
-            const dLat = toRad(lat2 - lat1);
-            const dLng = toRad(lng2 - lng1);
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-                    Math.sin(dLng/2) * Math.sin(dLng/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
-        }
-        
-        function toRad(degrees) {
-            return degrees * (Math.PI / 180);
-        }
-
         // ============ FIM FUNCIONALIDADES DO MAPA ============
 
         // ============ FUNCIONALIDADES DE RELATÓRIOS ============
@@ -1891,17 +2102,17 @@ function notifyNewOrder() {
                 return;
             }
 
+            // Detectar novos pedidos e tocar som
+            const currentOrderCount = activeAssignments.length;
+            if (window.lastOrderCount && currentOrderCount > window.lastOrderCount) {
+                console.log('🔔 Novo pedido detectado!');
+                notifyNewOrder();
+            }
+            window.lastOrderCount = currentOrderCount;
+
             const cardsHTML = activeAssignments.map(assignment => createOrderCard(assignment)).join('');
             ordersGrid.innerHTML = cardsHTML;
         }
-
-// Detectar novos pedidos e tocar som
-const currentOrderCount = activeAssignments.length;
-if (window.lastOrderCount && currentOrderCount > window.lastOrderCount) {
-    console.log('🔔 Novo pedido detectado!');
-    notifyNewOrder();
-}
-window.lastOrderCount = currentOrderCount;
 
         // Criar card do pedido
         function createOrderCard(assignment) {
