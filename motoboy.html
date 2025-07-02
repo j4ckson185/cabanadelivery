@@ -1464,38 +1464,25 @@
             
             console.log('📍 Destinos ordenados por distância:', destinations.map(d => `#${d.orderId} (${d.status}) - ${d.distance.toFixed(1)}km`));
             
-            // Construir URL do Google Maps
+            // Construir URL do Google Maps - ABORDAGEM CORRIGIDA
             let mapsUrl = '';
             
             if (destinations.length === 1) {
                 // Rota simples: origem → destino único
                 mapsUrl = `https://www.google.com/maps/dir/${origin}/${destinations[0].coords}`;
+                console.log('🗺️ Rota simples (1 destino):', mapsUrl);
             } else {
-                // Rota com múltiplos destinos
-                // Google Maps suporta até 25 waypoints (pontos intermediários)
-                const maxWaypoints = Math.min(destinations.length - 1, 25);
-                
-                if (destinations.length <= 26) {
-                    // Usar todos os destinos
-                    const waypoints = destinations.slice(0, -1).map(d => d.coords).join('|');
-                    const finalDestination = destinations[destinations.length - 1].coords;
-                    
-                    mapsUrl = `https://www.google.com/maps/dir/${origin}/${finalDestination}?waypoints=${waypoints}`;
-                } else {
-                    // Mais de 26 destinos - usar os 25 mais próximos + o mais distante como final
-                    console.warn(`⚠️ Muitos destinos (${destinations.length}). Usando apenas os 26 mais próximos.`);
-                    const nearestDestinations = destinations.slice(0, 25);
-                    const finalDestination = destinations[25]; // 26º destino como final
-                    
-                    const waypoints = nearestDestinations.map(d => d.coords).join('|');
-                    mapsUrl = `https://www.google.com/maps/dir/${origin}/${finalDestination.coords}?waypoints=${waypoints}`;
-                }
+                // Múltiplos destinos: listar todos na URL diretamente
+                // Google Maps aceita múltiplos pontos separados por "/"
+                const allPoints = [origin, ...destinations.map(d => d.coords)];
+                mapsUrl = `https://www.google.com/maps/dir/${allPoints.join('/')}`;
+                console.log('🗺️ Rota múltipla (' + destinations.length + ' destinos):', mapsUrl);
             }
             
-            // Adicionar parâmetros para otimizar rota e navegação
-            mapsUrl += (mapsUrl.includes('?') ? '&' : '?') + 'dir_action=navigate&travelmode=driving&optimize=true';
+            // Adicionar parâmetros para navegação
+            mapsUrl += '?dir_action=navigate&travelmode=driving';
             
-            console.log('🗺️ URL da rota completa:', mapsUrl);
+            console.log('🗺️ URL final da rota:', mapsUrl);
             
             // Abrir no Google Maps
             try {
@@ -1505,12 +1492,10 @@
                 // Log detalhado para confirmar
                 console.log(`✅ Rota iniciada com sucesso!`);
                 console.log(`📊 Total de pedidos incluídos: ${activeDeliveries.length}`);
-                console.log(`📊 Por status:`);
-                const statusCount = {};
-                activeDeliveries.forEach(assignment => {
-                    statusCount[assignment.status] = (statusCount[assignment.status] || 0) + 1;
+                console.log(`📊 Detalhes dos destinos:`);
+                destinations.forEach((dest, index) => {
+                    console.log(`  ${index + 1}. Pedido #${dest.orderId} (${dest.status}) - ${dest.coords} - ${dest.distance.toFixed(1)}km`);
                 });
-                console.log(statusCount);
                 
             } catch (error) {
                 console.error('❌ Erro ao abrir Google Maps:', error);
