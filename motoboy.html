@@ -218,6 +218,7 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 2rem;
+            padding-bottom: 100px; /* Espaço para botão fixo */
         }
 
         /* Navigation Tabs */
@@ -439,6 +440,51 @@
             font-size: 3rem;
             margin-bottom: 1rem;
             opacity: 0.5;
+        }
+
+        /* Fixed Footer Button */
+        .fixed-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            padding: 1rem;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .accept-all-btn {
+            width: 100%;
+            padding: 1rem;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.125rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .accept-all-btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .accept-all-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .accept-all-btn:disabled:hover {
+            transform: none;
         }
 
         /* Modal */
@@ -719,6 +765,7 @@
         @media (max-width: 768px) {
             .main-content {
                 padding: 1rem;
+                padding-bottom: 100px;
             }
 
             .orders-grid {
@@ -953,6 +1000,9 @@
                 <button class="nav-tab" onclick="switchTab('mapa')">
                     🗺️ Mapa
                 </button>
+                <button class="nav-tab" onclick="startRoute()">
+                    🚀 Iniciar Rota
+                </button>
             </div>
 
             <!-- Pedidos Tab -->
@@ -993,6 +1043,13 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Fixed Footer Button -->
+        <div id="fixedFooter" class="fixed-footer" style="display: none;">
+            <button id="acceptAllBtn" class="accept-all-btn" onclick="acceptAllOrders()">
+                ✅ Aceitar Todos
+            </button>
         </div>
     </div>
 
@@ -1064,6 +1121,10 @@
         // Variáveis do mapa
         let deliveryMap = null;
         let mapMarkers = new Map();
+
+        // Controle de tempo real melhorado
+        let lastSnapshotTime = 0;
+        let updateDebounceTimer = null;
 
         // Coordenadas da loja
         const STORE_LOCATION = {
@@ -1201,35 +1262,81 @@
             }
         }
 
-        // Configurar listeners em tempo real
+        // Configurar listeners em tempo real MELHORADO
         function setupRealTimeListeners() {
             // Limpar listener anterior se existir
             if (unsubscribeAssignments) {
                 unsubscribeAssignments();
             }
 
+            console.log('🔥 Configurando listener em tempo real para:', userDeliveryId);
+
             // Listener para atribuições do entregador
             const assignmentsRef = window.collection(window.firebaseDb, 'deliveryAssignments');
             unsubscribeAssignments = window.onSnapshot(assignmentsRef, (snapshot) => {
-                assignments.clear();
+                const currentTime = Date.now();
+                console.log(`🔥 Snapshot recebido às ${new Date().toLocaleTimeString()}`);
+                
+                // Limpar timer de debounce anterior
+                if (updateDebounceTimer) {
+                    clearTimeout(updateDebounceTimer);
+                }
+
+                // Processar mudanças imediatamente
+                const previousCount = assignments.size;
+                const newAssignments = new Map();
                 
                 snapshot.forEach((doc) => {
                     const data = doc.data();
                     if (data.deliveryId === userDeliveryId) {
-                        assignments.set(doc.id, {
+                        newAssignments.set(doc.id, {
                             id: doc.id,
                             ...data
                         });
                     }
                 });
                 
-                console.log(`📦 ${assignments.size} atribuições carregadas`);
-                renderOrders();
+                // Detectar novos pedidos ANTES de atualizar assignments
+                const newCount = newAssignments.size;
+                const activeNewAssignments = Array.from(newAssignments.values()).filter(assignment => 
+                    assignment.status === 'sent' || assignment.status === 'accepted' || assignment.status === 'dispatched'
+                );
+                const activeNewCount = activeNewAssignments.length;
                 
-                // Atualizar mapa se estiver na aba do mapa
-                if (currentTab === 'mapa' && deliveryMap) {
-                    loadMapOrders();
+                const previousActiveAssignments = Array.from(assignments.values()).filter(assignment => 
+                    assignment.status === 'sent' || assignment.status === 'accepted' || assignment.status === 'dispatched'
+                );
+                const previousActiveCount = previousActiveAssignments.length;
+
+                // Atualizar assignments
+                assignments.clear();
+                newAssignments.forEach((value, key) => {
+                    assignments.set(key, value);
+                });
+                
+                console.log(`📦 ${assignments.size} atribuições totais (${activeNewCount} ativas)`);
+                
+                // Tocar som para novos pedidos ativos
+                if (previousActiveCount > 0 && activeNewCount > previousActiveCount) {
+                    const newOrdersCount = activeNewCount - previousActiveCount;
+                    console.log(`🔔 ${newOrdersCount} novo(s) pedido(s) detectado(s)!`);
+                    notifyNewOrder();
                 }
+                
+                // Atualizar UI com debounce mínimo
+                updateDebounceTimer = setTimeout(() => {
+                    renderOrders();
+                    
+                    // Atualizar mapa se estiver na aba do mapa
+                    if (currentTab === 'mapa' && deliveryMap) {
+                        loadMapOrders();
+                    }
+                    
+                    lastSnapshotTime = currentTime;
+                }, 100); // Debounce mínimo de 100ms
+                
+            }, (error) => {
+                console.error('❌ Erro no listener de atribuições:', error);
             });
         }
 
@@ -1262,6 +1369,120 @@
                         loadMapOrders();
                     }, 300);
                 }, 100);
+            }
+        }
+
+        // ============ NOVA FUNCIONALIDADE: INICIAR ROTA ============
+        
+        // Iniciar rota no Google Maps
+        function startRoute() {
+            console.log('🚀 Iniciando rota...');
+            
+            // Filtrar pedidos aceitos ou despachados
+            const activeDeliveries = Array.from(assignments.values()).filter(assignment => 
+                (assignment.status === 'accepted' || assignment.status === 'dispatched') &&
+                assignment.order?.delivery?.deliveryAddress?.coordinates
+            );
+            
+            if (activeDeliveries.length === 0) {
+                showToast('Nenhum pedido ativo para criar rota', 'info');
+                return;
+            }
+            
+            // Ponto de origem (loja)
+            const origin = `${STORE_LOCATION.lat},${STORE_LOCATION.lng}`;
+            
+            // Coletar destinos com distâncias
+            const destinations = activeDeliveries.map(assignment => {
+                const addr = assignment.order.delivery.deliveryAddress.coordinates;
+                const distance = getDistance(STORE_LOCATION.lat, STORE_LOCATION.lng, addr.latitude, addr.longitude);
+                return {
+                    coords: `${addr.latitude},${addr.longitude}`,
+                    distance: distance,
+                    orderId: assignment.order.displayId
+                };
+            });
+            
+            // Ordenar por distância (mais próximo primeiro, mais distante por último)
+            destinations.sort((a, b) => a.distance - b.distance);
+            
+            console.log('📍 Destinos ordenados por distância:', destinations.map(d => `${d.orderId} (${d.distance.toFixed(1)}km)`));
+            
+            // Construir URL do Google Maps
+            let mapsUrl = '';
+            
+            if (destinations.length === 1) {
+                // Rota simples: origem → destino
+                mapsUrl = `https://www.google.com/maps/dir/${origin}/${destinations[0].coords}`;
+            } else {
+                // Rota com múltiplos pontos: origem → pontos intermediários → destino final
+                const waypoints = destinations.slice(0, -1).map(d => d.coords).join('|');
+                const destination = destinations[destinations.length - 1].coords;
+                
+                mapsUrl = `https://www.google.com/maps/dir/${origin}/${destination}`;
+                if (waypoints) {
+                    mapsUrl += `?waypoints=${waypoints}`;
+                }
+            }
+            
+            // Adicionar parâmetros para otimizar rota
+            mapsUrl += (mapsUrl.includes('?') ? '&' : '?') + 'dir_action=navigate&travelmode=driving';
+            
+            console.log('🗺️ URL da rota:', mapsUrl);
+            
+            // Abrir no Google Maps
+            try {
+                window.open(mapsUrl, '_blank');
+                showToast(`🚀 Rota criada com ${activeDeliveries.length} destino(s)`, 'success');
+            } catch (error) {
+                console.error('❌ Erro ao abrir Google Maps:', error);
+                showToast('Erro ao abrir rota no Google Maps', 'error');
+            }
+        }
+
+        // ============ NOVA FUNCIONALIDADE: ACEITAR TODOS ============
+        
+        // Aceitar todos os pedidos pendentes
+        async function acceptAllOrders() {
+            const pendingAssignments = Array.from(assignments.values()).filter(assignment => 
+                assignment.status === 'sent'
+            );
+            
+            if (pendingAssignments.length === 0) {
+                showToast('Nenhum pedido pendente para aceitar', 'info');
+                return;
+            }
+            
+            const acceptBtn = document.getElementById('acceptAllBtn');
+            acceptBtn.disabled = true;
+            acceptBtn.innerHTML = '⏳ Aceitando...';
+            
+            try {
+                console.log(`✅ Aceitando ${pendingAssignments.length} pedidos...`);
+                
+                // Importar funções do Firebase
+                const { doc, updateDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                
+                // Aceitar todos os pedidos em paralelo
+                const acceptPromises = pendingAssignments.map(async (assignment) => {
+                    const docRef = doc(window.firebaseDb, 'deliveryAssignments', assignment.id);
+                    return updateDoc(docRef, {
+                        status: 'accepted',
+                        acceptedAt: new Date().toISOString(),
+                        updatedAt: serverTimestamp()
+                    });
+                });
+                
+                await Promise.all(acceptPromises);
+                
+                showToast(`✅ ${pendingAssignments.length} pedido(s) aceito(s) com sucesso!`, 'success');
+                
+            } catch (error) {
+                console.error('❌ Erro ao aceitar pedidos:', error);
+                showToast('Erro ao aceitar alguns pedidos', 'error');
+            } finally {
+                acceptBtn.disabled = false;
+                acceptBtn.innerHTML = '✅ Aceitar Todos';
             }
         }
 
@@ -1949,7 +2170,7 @@ function notifyNewOrder() {
 
         // ============ FIM FUNCIONALIDADES DE RELATÓRIOS ============
 
-        // Renderizar pedidos
+        // Renderizar pedidos MELHORADO
         function renderOrders() {
             const ordersGrid = document.getElementById('ordersGrid');
             
@@ -1957,6 +2178,26 @@ function notifyNewOrder() {
             const activeAssignments = Array.from(assignments.values()).filter(assignment => 
                 assignment.status === 'sent' || assignment.status === 'accepted' || assignment.status === 'dispatched'
             );
+
+            const pendingAssignments = activeAssignments.filter(assignment => assignment.status === 'sent');
+
+            // Controlar botão "Aceitar Todos"
+            const fixedFooter = document.getElementById('fixedFooter');
+            const acceptAllBtn = document.getElementById('acceptAllBtn');
+            
+            if (activeAssignments.length > 0) {
+                fixedFooter.style.display = 'block';
+                
+                if (pendingAssignments.length > 0) {
+                    acceptAllBtn.disabled = false;
+                    acceptAllBtn.innerHTML = `✅ Aceitar Todos (${pendingAssignments.length})`;
+                } else {
+                    acceptAllBtn.disabled = true;
+                    acceptAllBtn.innerHTML = '✅ Todos Aceitos';
+                }
+            } else {
+                fixedFooter.style.display = 'none';
+            }
 
             if (activeAssignments.length === 0) {
                 ordersGrid.innerHTML = `
@@ -1968,16 +2209,10 @@ function notifyNewOrder() {
                 return;
             }
 
-            // Detectar novos pedidos e tocar som
-            const currentOrderCount = activeAssignments.length;
-            if (window.lastOrderCount && currentOrderCount > window.lastOrderCount) {
-                console.log('🔔 Novo pedido detectado!');
-                notifyNewOrder();
-            }
-            window.lastOrderCount = currentOrderCount;
-
             const cardsHTML = activeAssignments.map(assignment => createOrderCard(assignment)).join('');
             ordersGrid.innerHTML = cardsHTML;
+            
+            console.log(`🎨 UI atualizada: ${activeAssignments.length} pedidos ativos, ${pendingAssignments.length} pendentes`);
         }
 
         // Criar card do pedido
@@ -2468,7 +2703,9 @@ function notifyNewOrder() {
 
         // Tornar funções globais
         window.switchTab = switchTab;
+        window.startRoute = startRoute;
         window.acceptOrder = acceptOrder;
+        window.acceptAllOrders = acceptAllOrders;
         window.dispatchOrder = dispatchOrder;
         window.confirmDeliveryCode = confirmDeliveryCode;
         window.finishWithoutCode = finishWithoutCode;
