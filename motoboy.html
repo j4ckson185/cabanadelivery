@@ -1424,11 +1424,20 @@
         function startRoute() {
             console.log('🚀 Iniciando rota...');
             
-            // Filtrar pedidos aceitos ou despachados
-            const activeDeliveries = Array.from(assignments.values()).filter(assignment => 
-                (assignment.status === 'accepted' || assignment.status === 'dispatched') &&
-                assignment.order?.delivery?.deliveryAddress?.coordinates
-            );
+            // Filtrar TODOS os pedidos ativos (enviados, aceitos ou despachados) que têm endereço
+            const activeDeliveries = Array.from(assignments.values()).filter(assignment => {
+                // Incluir todos os pedidos que aparecem na página do motoboy
+                const isActiveStatus = assignment.status === 'sent' || assignment.status === 'accepted' || assignment.status === 'dispatched';
+                const hasDeliveryAddress = assignment.order?.delivery?.deliveryAddress?.coordinates;
+                const isDelivery = !assignment.order?.orderType || assignment.order.orderType === 'DELIVERY';
+                
+                return isActiveStatus && hasDeliveryAddress && isDelivery;
+            });
+            
+            console.log(`🚀 Pedidos encontrados para rota: ${activeDeliveries.length}`);
+            activeDeliveries.forEach(assignment => {
+                console.log(`- Pedido #${assignment.order.displayId} (${assignment.status})`);
+            });
             
             if (activeDeliveries.length === 0) {
                 showToast('Nenhum pedido ativo para criar rota', 'info');
@@ -1445,41 +1454,64 @@
                 return {
                     coords: `${addr.latitude},${addr.longitude}`,
                     distance: distance,
-                    orderId: assignment.order.displayId
+                    orderId: assignment.order.displayId,
+                    status: assignment.status
                 };
             });
             
-            // Ordenar por distância (mais próximo primeiro, mais distante por último)
+            // Ordenar por distância (mais próximo primeiro)
             destinations.sort((a, b) => a.distance - b.distance);
             
-            console.log('📍 Destinos ordenados por distância:', destinations.map(d => `${d.orderId} (${d.distance.toFixed(1)}km)`));
+            console.log('📍 Destinos ordenados por distância:', destinations.map(d => `#${d.orderId} (${d.status}) - ${d.distance.toFixed(1)}km`));
             
             // Construir URL do Google Maps
             let mapsUrl = '';
             
             if (destinations.length === 1) {
-                // Rota simples: origem → destino
+                // Rota simples: origem → destino único
                 mapsUrl = `https://www.google.com/maps/dir/${origin}/${destinations[0].coords}`;
             } else {
-                // Rota com múltiplos pontos: origem → pontos intermediários → destino final
-                const waypoints = destinations.slice(0, -1).map(d => d.coords).join('|');
-                const destination = destinations[destinations.length - 1].coords;
+                // Rota com múltiplos destinos
+                // Google Maps suporta até 25 waypoints (pontos intermediários)
+                const maxWaypoints = Math.min(destinations.length - 1, 25);
                 
-                mapsUrl = `https://www.google.com/maps/dir/${origin}/${destination}`;
-                if (waypoints) {
-                    mapsUrl += `?waypoints=${waypoints}`;
+                if (destinations.length <= 26) {
+                    // Usar todos os destinos
+                    const waypoints = destinations.slice(0, -1).map(d => d.coords).join('|');
+                    const finalDestination = destinations[destinations.length - 1].coords;
+                    
+                    mapsUrl = `https://www.google.com/maps/dir/${origin}/${finalDestination}?waypoints=${waypoints}`;
+                } else {
+                    // Mais de 26 destinos - usar os 25 mais próximos + o mais distante como final
+                    console.warn(`⚠️ Muitos destinos (${destinations.length}). Usando apenas os 26 mais próximos.`);
+                    const nearestDestinations = destinations.slice(0, 25);
+                    const finalDestination = destinations[25]; // 26º destino como final
+                    
+                    const waypoints = nearestDestinations.map(d => d.coords).join('|');
+                    mapsUrl = `https://www.google.com/maps/dir/${origin}/${finalDestination.coords}?waypoints=${waypoints}`;
                 }
             }
             
-            // Adicionar parâmetros para otimizar rota
-            mapsUrl += (mapsUrl.includes('?') ? '&' : '?') + 'dir_action=navigate&travelmode=driving';
+            // Adicionar parâmetros para otimizar rota e navegação
+            mapsUrl += (mapsUrl.includes('?') ? '&' : '?') + 'dir_action=navigate&travelmode=driving&optimize=true';
             
-            console.log('🗺️ URL da rota:', mapsUrl);
+            console.log('🗺️ URL da rota completa:', mapsUrl);
             
             // Abrir no Google Maps
             try {
                 window.open(mapsUrl, '_blank');
-                showToast(`🚀 Rota criada com ${activeDeliveries.length} destino(s)`, 'success');
+                showToast(`🚀 Rota criada com ${activeDeliveries.length} destino(s)!`, 'success');
+                
+                // Log detalhado para confirmar
+                console.log(`✅ Rota iniciada com sucesso!`);
+                console.log(`📊 Total de pedidos incluídos: ${activeDeliveries.length}`);
+                console.log(`📊 Por status:`);
+                const statusCount = {};
+                activeDeliveries.forEach(assignment => {
+                    statusCount[assignment.status] = (statusCount[assignment.status] || 0) + 1;
+                });
+                console.log(statusCount);
+                
             } catch (error) {
                 console.error('❌ Erro ao abrir Google Maps:', error);
                 showToast('Erro ao abrir rota no Google Maps', 'error');
