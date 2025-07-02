@@ -1894,7 +1894,7 @@ function notifyNewOrder() {
             document.getElementById('reportResult').style.display = 'none';
         }
 
-        // Gerar relatório
+ // Gerar relatório
         function generateReport() {
             const selectedDate = document.getElementById('reportDate').value;
             
@@ -1903,13 +1903,20 @@ function notifyNewOrder() {
                 return;
             }
 
-            // Converter data selecionada para início e fim do dia
-            const reportDate = new Date(selectedDate);
-            const startOfDay = new Date(reportDate.getFullYear(), reportDate.getMonth(), reportDate.getDate());
-            const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
-
             console.log(`📊 Gerando relatório para: ${selectedDate}`);
-            console.log(`📊 Período: ${startOfDay.toISOString()} até ${endOfDay.toISOString()}`);
+
+            // Criar período usando fuso horário de Fortaleza (UTC-3)
+            // Início do dia às 00:00 em Fortaleza
+            const startOfDay = new Date(selectedDate + 'T00:00:00-03:00');
+            // Fim do dia às 23:59:59.999 em Fortaleza
+            const endOfDay = new Date(selectedDate + 'T23:59:59.999-03:00');
+
+            console.log(`📊 Período em Fortaleza:`);
+            console.log(`- Início: ${startOfDay.toLocaleString('pt-BR', {timeZone: 'America/Fortaleza'})}`);
+            console.log(`- Fim: ${endOfDay.toLocaleString('pt-BR', {timeZone: 'America/Fortaleza'})}`);
+            console.log(`📊 Período em UTC:`);
+            console.log(`- Início: ${startOfDay.toISOString()}`);
+            console.log(`- Fim: ${endOfDay.toISOString()}`);
 
             let concludedCount = 0;
 
@@ -1918,9 +1925,16 @@ function notifyNewOrder() {
                 if (assignment.status === 'concluded' && assignment.concludedAt) {
                     const concludedDate = new Date(assignment.concludedAt);
                     
-                    if (concludedDate >= startOfDay && concludedDate < endOfDay) {
+                    // Debug do pedido
+                    const concludedLocalStr = concludedDate.toLocaleString('pt-BR', {timeZone: 'America/Fortaleza'});
+                    console.log(`📊 Verificando pedido ${assignment.order?.displayId}:`);
+                    console.log(`- concludedAt UTC: ${assignment.concludedAt}`);
+                    console.log(`- concludedAt Fortaleza: ${concludedLocalStr}`);
+                    console.log(`- está no período? ${concludedDate >= startOfDay && concludedDate <= endOfDay}`);
+                    
+                    if (concludedDate >= startOfDay && concludedDate <= endOfDay) {
                         concludedCount++;
-                        console.log(`📊 Pedido concluído encontrado: ${assignment.order?.displayId} às ${concludedDate.toLocaleTimeString()}`);
+                        console.log(`📊 ✅ Pedido concluído encontrado: ${assignment.order?.displayId} às ${concludedLocalStr}`);
                     }
                 }
             });
@@ -1929,7 +1943,7 @@ function notifyNewOrder() {
             document.getElementById('reportCount').textContent = concludedCount;
             document.getElementById('reportResult').style.display = 'block';
 
-            const dateFormatted = reportDate.toLocaleDateString('pt-BR');
+            const dateFormatted = new Date(selectedDate + 'T12:00:00-03:00').toLocaleDateString('pt-BR');
             showToast(`📊 Relatório gerado: ${concludedCount} pedidos em ${dateFormatted}`, 'info');
         }
 
