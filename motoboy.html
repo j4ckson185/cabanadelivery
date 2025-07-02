@@ -947,37 +947,9 @@
     opacity: 1;
     transform: translateX(0);
 }
-
-/* Debug Panel */
-.debug-panel {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    background: rgba(0, 0, 0, 0.8);
-    color: #00ff00;
-    padding: 0.5rem;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 0.75rem;
-    z-index: 9999;
-    max-width: 300px;
-    display: none;
-}
-
-.debug-panel.show {
-    display: block;
-}
     </style>
 </head>
 <body>
-    <!-- Debug Panel -->
-    <div id="debugPanel" class="debug-panel">
-        <div>Email: <span id="debugEmail">-</span></div>
-        <div>UserID: <span id="debugUserId">-</span></div>
-        <div>Assignments: <span id="debugAssignments">0</span></div>
-        <div>Status: <span id="debugStatus">Carregando...</span></div>
-    </div>
-
     <!-- Login Screen -->
     <div id="loginScreen" class="login-container">
         <div class="login-card">
@@ -1016,9 +988,6 @@
                 <div class="app-logo">
                     🏍️ Cabana Delivery
                 </div>
-                <button class="header-menu-btn" onclick="toggleDebugPanel()" style="margin-left: auto; font-size: 1rem;">
-                    🔧
-                </button>
             </div>
         </div>
 
@@ -1131,17 +1100,6 @@
                         <div class="result-value" id="reportCount">0</div>
                     </div>
                 </div>
-
-                <!-- Debug Section -->
-                <div style="border-top: 1px solid #e2e8f0; padding-top: 1.5rem; margin-top: 1.5rem;">
-                    <h4 style="margin-bottom: 1rem; color: #1e293b;">🔧 Debug</h4>
-                    <button class="btn-filter" onclick="debugCheckAssignments()" style="background: #f59e0b; margin-bottom: 0.5rem;">
-                        🔍 Verificar Assignments
-                    </button>
-                    <button class="btn-filter" onclick="forceReconnect()" style="background: #ef4444;">
-                        🔄 Reconectar
-                    </button>
-                </div>
             </div>
         </div>
     </div>
@@ -1196,23 +1154,6 @@
             'andrade88210@gmail.com': 'gabriel',
             'rivanilsonotaviano@gmail.com': 'rivanilson'
         };
-
-        // Debug functions
-        function updateDebugPanel() {
-            document.getElementById('debugEmail').textContent = currentUser?.email || '-';
-            document.getElementById('debugUserId').textContent = userDeliveryId || '-';
-            document.getElementById('debugAssignments').textContent = assignments.size;
-            document.getElementById('debugStatus').textContent = unsubscribeAssignments ? 'Conectado' : 'Desconectado';
-        }
-
-        function toggleDebugPanel() {
-            const panel = document.getElementById('debugPanel');
-            panel.classList.toggle('show');
-            if (panel.classList.contains('show')) {
-                updateDebugPanel();
-                setInterval(updateDebugPanel, 1000);
-            }
-        }
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
@@ -1443,73 +1384,6 @@
             }, (error) => {
                 console.error('❌ Erro no listener de atribuições para', userDeliveryId, ':', error);
             });
-        }
-
-        // NOVA: Função para debug manual de assignments
-        async function debugCheckAssignments() {
-            console.log('🔍 TESTE MANUAL: Verificando assignments para', userDeliveryId);
-            
-            try {
-                const { getDocs } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-                
-                const assignmentsRef = window.collection(window.firebaseDb, 'deliveryAssignments');
-                const snapshot = await getDocs(assignmentsRef);
-                
-                console.log(`📊 Total de assignments no Firebase: ${snapshot.size}`);
-                
-                let userCount = 0;
-                let allDeliveryIds = new Set();
-                
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    allDeliveryIds.add(data.deliveryId);
-                    
-                    if (data.deliveryId === userDeliveryId) {
-                        userCount++;
-                        console.log(`✅ Assignment para ${userDeliveryId} encontrado:`, {
-                            id: doc.id,
-                            orderId: data.order?.displayId,
-                            status: data.status,
-                            assignedAt: data.assignedAt,
-                            deliveryName: data.deliveryName
-                        });
-                    }
-                });
-                
-                console.log(`📊 Total de assignments para ${userDeliveryId}: ${userCount}`);
-                console.log(`📊 DeliveryIds encontrados no Firebase:`, Array.from(allDeliveryIds));
-                
-                if (userCount === 0) {
-                    console.log(`❌ PROBLEMA: Nenhum assignment encontrado para deliveryId "${userDeliveryId}"`);
-                    console.log('💡 SOLUÇÃO: Verifique se os pedidos estão sendo atribuídos corretamente no PDV');
-                    
-                    showToast(`❌ Nenhum assignment encontrado para ${userDeliveryId}`, 'error');
-                } else {
-                    showToast(`✅ ${userCount} assignments encontrados para ${userDeliveryId}`, 'success');
-                }
-                
-            } catch (error) {
-                console.error('❌ Erro ao verificar assignments:', error);
-                showToast('Erro ao verificar assignments', 'error');
-            }
-        }
-
-        // NOVA: Função para forçar reconexão
-        function forceReconnect() {
-            console.log('🔄 Forçando reconexão do listener...');
-            
-            if (unsubscribeAssignments) {
-                unsubscribeAssignments();
-                unsubscribeAssignments = null;
-            }
-            
-            assignments.clear();
-            renderOrders();
-            
-            setTimeout(() => {
-                setupRealTimeListeners();
-                showToast('🔄 Reconectado ao Firebase', 'info');
-            }, 1000);
         }
 
         // Trocar abas - versão simplificada
@@ -2887,9 +2761,6 @@ function notifyNewOrder() {
         window.closeReportsModal = closeReportsModal;
         window.generateReport = generateReport;
         window.logout = logout;
-        window.toggleDebugPanel = toggleDebugPanel;
-        window.debugCheckAssignments = debugCheckAssignments;
-        window.forceReconnect = forceReconnect;
     </script>
 </body>
 </html>
