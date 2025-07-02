@@ -1431,17 +1431,21 @@ function applyRotation() {
     console.log(`🔄 Mapa rotacionado: ${mapRotation}°`);
 }
 
-// Versão simplificada da rotação por touch que FUNCIONA
+// Rotação por touch corrigida para mobile
 function addSimpleTouchRotation() {
     const mapContainer = deliveryMap.getContainer();
     let initialAngle = 0;
     let isRotatingNow = false;
+    let rotationStarted = false;
+    let startTouches = [];
     
     mapContainer.addEventListener('touchstart', (e) => {
         if (e.touches.length === 2) {
-            // Capturar ângulo inicial
-            initialAngle = getTouchAngle(e.touches[0], e.touches[1]);
-            isRotatingNow = false; // Resetar flag
+            startTouches = Array.from(e.touches);
+            initialAngle = getTouchAngle(startTouches[0], startTouches[1]);
+            isRotatingNow = false;
+            rotationStarted = false;
+            console.log('🔄 Iniciando detecção de rotação...');
         }
     }, { passive: true });
     
@@ -1450,37 +1454,67 @@ function addSimpleTouchRotation() {
             const currentAngle = getTouchAngle(e.touches[0], e.touches[1]);
             const angleDiff = currentAngle - initialAngle;
             
-            // Se movimento angular significativo, é rotação
-            if (Math.abs(angleDiff) > 10) {
+            // Detectar rotação com threshold menor e mais sensível
+            if (!rotationStarted && Math.abs(angleDiff) > 5) {
+                // Verificar se é realmente rotação (diferença angular consistente)
+                rotationStarted = true;
                 isRotatingNow = true;
                 isRotating = true;
+                console.log('🔄 Rotação detectada e iniciada!');
+            }
+            
+            if (rotationStarted && isRotatingNow) {
+                // Prevenir zoom/pan do mapa durante rotação
+                e.preventDefault();
                 
-                // Aplicar rotação suave
-                mapRotation += angleDiff * 0.5;
+                // Aplicar rotação de forma mais suave e responsiva
+                const rotationAmount = angleDiff * 0.8; // Mais sensível
+                mapRotation += rotationAmount;
+                
+                // Normalizar rotação para evitar valores muito grandes
+                while (mapRotation > 360) mapRotation -= 360;
+                while (mapRotation < -360) mapRotation += 360;
+                
                 applyRotation();
                 
+                // Atualizar ângulo de referência
                 initialAngle = currentAngle;
                 
-                // Prevenir zoom apenas se for rotação confirmada
-                e.preventDefault();
+                console.log(`🔄 Rotacionando: ${mapRotation.toFixed(1)}°`);
             }
-            // Se movimento pequeno, deixar ser zoom natural
         }
     }, { passive: false });
     
     mapContainer.addEventListener('touchend', (e) => {
         if (e.touches.length < 2) {
+            if (rotationStarted) {
+                console.log('🔄 Rotação finalizada');
+            }
             isRotatingNow = false;
             isRotating = false;
+            rotationStarted = false;
         }
+    }, { passive: true });
+    
+    mapContainer.addEventListener('touchcancel', (e) => {
+        console.log('🔄 Touch cancelado - parando rotação');
+        isRotatingNow = false;
+        isRotating = false;
+        rotationStarted = false;
     }, { passive: true });
 }
 
-// Função getTouchAngle simplificada
+// Função getTouchAngle melhorada para rotação
 function getTouchAngle(touch1, touch2) {
     const dx = touch2.clientX - touch1.clientX;
     const dy = touch2.clientY - touch1.clientY;
-    return Math.atan2(dy, dx) * (180 / Math.PI);
+    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    
+    // Normalizar ângulo para ficar entre -180 e 180
+    if (angle > 180) angle -= 360;
+    if (angle < -180) angle += 360;
+    
+    return angle;
 }
 
         // Variáveis para localização do usuário
