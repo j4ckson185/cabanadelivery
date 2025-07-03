@@ -3884,16 +3884,16 @@ window.addEventListener('beforeunload', () => {
         window.openOrderMarkerPopup = openOrderMarkerPopup;
     </script>
 
-    <!-- ====================================== -->
-<!-- SOLUÇÃO: SCRIPT INLINE PARA MODAL ASSIGNMENT -->
 <!-- ====================================== -->
-<!-- Adicione este código no final do seu index.html, antes do fechamento do </body> -->
+<!-- SOLUÇÃO: SCRIPT INLINE PARA MODAL ASSIGNMENT - COM DISPATCHED -->
+<!-- ====================================== -->
+<!-- Substitua o script anterior por este código no final do seu index.html, antes do fechamento do </body> -->
 
 <script>
 // ====================================
-// MODAL ASSIGNMENT ADDON v1.0 - INLINE
+// MODAL ASSIGNMENT ADDON v1.1 - COM DISPATCHED
 // ====================================
-console.log('🔧 Carregando Modal Assignment Addon v1.0...');
+console.log('🔧 Carregando Modal Assignment Addon v1.1 (com Dispatched)...');
 
 // ✅ NOVA VARIÁVEL GLOBAL
 window.singleOrderForAssignment = null;
@@ -3909,7 +3909,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function setupModalAssignmentAddon() {
-    console.log('🔧 Configurando Modal Assignment Addon...');
+    console.log('🔧 Configurando Modal Assignment Addon v1.1...');
     
     // ✅ SUBSTITUIR A FUNÇÃO generateActionButtons() EXISTENTE
     if (typeof window.generateActionButtons === 'function') {
@@ -3964,11 +3964,15 @@ function setupModalAssignmentAddon() {
                 case 'DSP':
                     buttons = `
                         <div class="action-buttons">
-                            ${assignment ? `
+                            ${!assignment ? `
+                            <button class="btn" style="background: #10b981; color: white;" onclick="openSingleOrderDeliveryModal('${order.id}')">
+                                🏍️ Atribuir para Motoboy
+                            </button>
+                            ` : `
                             <button class="btn" style="background: #8b5cf6; color: white;" onclick="showAssignmentInfo('${order.id}')">
                                 👁️ Ver Atribuição
                             </button>
-                            ` : ''}
+                            `}
                             <button class="btn btn-cancel" onclick="cancelOrder('${order.id}')">
                                 ❌ Cancelar Pedido
                             </button>
@@ -4010,7 +4014,7 @@ function setupModalAssignmentAddon() {
             return;
         }
 
-        console.log(`🏍️ Abrindo modal de atribuição para pedido único: ${order.displayId}`);
+        console.log(`🏍️ Abrindo modal de atribuição para pedido único: ${order.displayId} (Status: ${order.orderStatus})`);
         
         // Armazenar pedido único
         window.singleOrderForAssignment = orderId;
@@ -4081,6 +4085,7 @@ function setupModalAssignmentAddon() {
                             <div style="font-weight: 600; color: #1e293b; margin-bottom: 0.5rem;">📦 Pedido</div>
                             <div style="font-size: 0.875rem; color: #64748b;">Cliente: ${order.customer?.name || 'N/A'}</div>
                             <div style="font-size: 0.875rem; color: #64748b;">Total: ${formatCurrency(order.total?.orderAmount || 0)}</div>
+                            <div style="font-size: 0.875rem; color: #64748b;">Status: ${order.orderStatus || 'N/A'}</div>
                         </div>
                         
                         <div style="background: #f0fdf4; padding: 1rem; border-radius: 8px;">
@@ -4169,7 +4174,8 @@ function setupModalAssignmentAddon() {
             // Verificar se é atribuição de pedido único ou múltiplos
             if (window.singleOrderForAssignment) {
                 orderIds = [window.singleOrderForAssignment];
-                console.log(`📤 Atribuindo pedido único ${window.singleOrderForAssignment} para ${deliveryName}`);
+                const order = orders.get(window.singleOrderForAssignment);
+                console.log(`📤 Atribuindo pedido único ${order?.displayId} (${order?.orderStatus}) para ${deliveryName}`);
             } else {
                 orderIds = Array.from(selectedOrders);
                 console.log(`📤 Atribuindo ${selectedOrders.size} pedidos para ${deliveryName}`);
@@ -4281,7 +4287,7 @@ function setupModalAssignmentAddon() {
         addRafaelToDeliveryModal();
     }, 1000);
 
-    console.log('✅ Modal Assignment Addon v1.0 configurado com sucesso!');
+    console.log('✅ Modal Assignment Addon v1.1 configurado com sucesso!');
 }
 
 // ✅ ADICIONAR FUNCIONALIDADES GLOBAIS
@@ -4290,9 +4296,9 @@ window.showAssignmentInfo = window.showAssignmentInfo;
 window.closeAssignmentInfoModal = window.closeAssignmentInfoModal;
 window.removeSingleOrderFromDelivery = window.removeSingleOrderFromDelivery;
 
-console.log('✅ Modal Assignment Addon v1.0 carregado com sucesso!');
+console.log('✅ Modal Assignment Addon v1.1 carregado com sucesso!');
 </script>
 
-<!-- FIM DO SCRIPT - Adicione antes do fechamento do </body> -->
+<!-- FIM DO SCRIPT - Substitua o script anterior por este -->
 </body>
 </html>
