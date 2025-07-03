@@ -1196,45 +1196,50 @@
         </div>
     </div>
 
-    <!-- Modal de Seleção de Entregador -->
-    <div id="deliverySelectionModal" class="delivery-selection-modal">
-        <div class="delivery-selection-content">
-            <div class="delivery-header">
-                <div style="font-size: 1.25rem; font-weight: 600;">🚚 Selecionar Entregador</div>
-                <div style="font-size: 0.875rem; opacity: 0.9; margin-top: 0.5rem;">
-                    <span id="selectedOrdersCount">0</span> pedido(s) selecionado(s)
-                </div>
-                <button class="close-btn" onclick="closeDeliverySelectionModal()" style="top: 0.75rem; right: 0.75rem;">×</button>
+<!-- Modal de Seleção de Entregador -->
+<div id="deliverySelectionModal" class="delivery-selection-modal">
+    <div class="delivery-selection-content">
+        <div class="delivery-header">
+            <div style="font-size: 1.25rem; font-weight: 600;">🚚 Selecionar Entregador</div>
+            <div style="font-size: 0.875rem; opacity: 0.9; margin-top: 0.5rem;">
+                <span id="selectedOrdersCount">0</span> pedido(s) selecionado(s)
             </div>
-            
-            <div class="delivery-list">
-                <div class="delivery-option" onclick="assignToDelivery('jackson', 'Jackson')">
-                    <div class="delivery-name">🏍️ Jackson</div>
-                    <div class="delivery-email">jackson_division@hotmail.com</div>
-                </div>
-                <div class="delivery-option" onclick="assignToDelivery('boaz', 'Boaz')">
-                    <div class="delivery-name">🏍️ Boaz</div>
-                    <div class="delivery-email">boazd3@gmail.com</div>
-                </div>
-                <div class="delivery-option" onclick="assignToDelivery('gabriel', 'Gabriel Andrade')">
-                    <div class="delivery-name">🏍️ Gabriel Andrade</div>
-                    <div class="delivery-email">andrade88210@gmail.com</div>
-                </div>
-                <div class="delivery-option" onclick="assignToDelivery('matheus', 'Matheus Moura')">
-                    <div class="delivery-name">🏍️ Matheus Moura</div>
-                    <div class="delivery-email">matheusmoura175@gmail.com</div>
-                </div>
-                <div class="delivery-option" onclick="assignToDelivery('narlison', 'Narlison')">
-                    <div class="delivery-name">🏍️ Narlison</div>
-                    <div class="delivery-email">narlisonmedeiros04@gmail.com</div>
-                </div>
-                <div class="delivery-option" onclick="assignToDelivery('rivanilson', 'Rivanilson')">
-                    <div class="delivery-name">🏍️ Rivanilson</div>
-                    <div class="delivery-email">rivanilsonotaviano@gmail.com</div>
-                </div>
+            <button class="close-btn" onclick="closeDeliverySelectionModal()" style="top: 0.75rem; right: 0.75rem;">×</button>
+        </div>
+        
+        <div class="delivery-list">
+            <div class="delivery-option" onclick="assignToDelivery('jackson', 'Jackson')">
+                <div class="delivery-name">🏍️ Jackson</div>
+                <div class="delivery-email">jackson_division@hotmail.com</div>
+            </div>
+            <div class="delivery-option" onclick="assignToDelivery('boaz', 'Boaz')">
+                <div class="delivery-name">🏍️ Boaz</div>
+                <div class="delivery-email">boazd3@gmail.com</div>
+            </div>
+            <div class="delivery-option" onclick="assignToDelivery('gabriel', 'Gabriel Andrade')">
+                <div class="delivery-name">🏍️ Gabriel Andrade</div>
+                <div class="delivery-email">andrade88210@gmail.com</div>
+            </div>
+            <div class="delivery-option" onclick="assignToDelivery('matheus', 'Matheus Moura')">
+                <div class="delivery-name">🏍️ Matheus Moura</div>
+                <div class="delivery-email">matheusmoura175@gmail.com</div>
+            </div>
+            <div class="delivery-option" onclick="assignToDelivery('narlison', 'Narlison')">
+                <div class="delivery-name">🏍️ Narlison</div>
+                <div class="delivery-email">narlisonmedeiros04@gmail.com</div>
+            </div>
+            <!-- ✅ ADICIONAR AQUI: -->
+            <div class="delivery-option" onclick="assignToDelivery('rafael', 'Rafael Judson')">
+                <div class="delivery-name">🏍️ Rafael Judson</div>
+                <div class="delivery-email">rafaeljudson.profissional@gmail.com</div>
+            </div>
+            <div class="delivery-option" onclick="assignToDelivery('rivanilson', 'Rivanilson')">
+                <div class="delivery-name">🏍️ Rivanilson</div>
+                <div class="delivery-email">rivanilsonotaviano@gmail.com</div>
             </div>
         </div>
     </div>
+</div>
 
     <!-- Toast para notificações -->
     <div id="toast" class="toast"></div>
