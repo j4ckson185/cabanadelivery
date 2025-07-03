@@ -2076,119 +2076,132 @@ function updateDeliveryFeesTotal() {
     document.getElementById('totalDeliveryFees').textContent = formatCurrency(totalFees);
 }
 
-        function createOrderCard(order) {
-            const createdAt = new Date(order.createdAt);
-            const timeString = createdAt.toLocaleTimeString('pt-BR', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
+ function createOrderCard(order) {
+    const createdAt = new Date(order.createdAt);
+    const timeString = createdAt.toLocaleTimeString('pt-BR', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+    });
 
-            const dateString = createdAt.toLocaleDateString('pt-BR');
-            const statusClass = getStatusClass(order.orderStatus);
-            const statusLabel = getStatusLabel(order.orderStatus);
+    const dateString = createdAt.toLocaleDateString('pt-BR');
+    const statusClass = getStatusClass(order.orderStatus);
+    const statusLabel = getStatusLabel(order.orderStatus);
 
-            // Endereço simplificado
-            const address = order.delivery?.deliveryAddress;
-            const addressText = address ? 
-                `${address.streetName || ''} ${address.streetNumber || ''}, ${address.neighborhood || ''}`.trim() : 
-                'Retirada no local';
+    // Endereço simplificado
+    const address = order.delivery?.deliveryAddress;
+    const addressText = address ? 
+        `${address.streetName || ''} ${address.streetNumber || ''}, ${address.neighborhood || ''}`.trim() : 
+        'Retirada no local';
 
-            // Método de pagamento principal
-            const mainPayment = order.payments?.methods?.[0];
-            const paymentText = mainPayment ? getPaymentMethodLabel(mainPayment) : 'N/A';
+    // Método de pagamento principal
+    const mainPayment = order.payments?.methods?.[0];
+    const paymentText = mainPayment ? getPaymentMethodLabel(mainPayment) : 'N/A';
 
-            // Valor total - corrigindo para não dividir por 100
-            const total = formatCurrency(order.total?.orderAmount || 0);
+    // Valor total - corrigindo para não dividir por 100
+    const total = formatCurrency(order.total?.orderAmount || 0);
 
-            // Preparação
-            const prepTime = order.preparationStartDateTime ? 
-                new Date(order.preparationStartDateTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 
-                'Não informado';
+    // Preparação
+    const prepTime = order.preparationStartDateTime ? 
+        new Date(order.preparationStartDateTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 
+        'Não informado';
 
-            // CORREÇÃO: Gerar botões de ação do card
-            console.log(`🚨 GERANDO BOTÕES para card do pedido ${order.displayId}`);
-            const cardActionsHTML = generateCardActionButtons(order);
-            console.log(`🚨 Botões gerados para card:`, cardActionsHTML.substring(0, 100) + '...');
+    // Verificar se pedido foi atribuído a um motoboy
+    const delivery = deliveryAssignments.get(order.id);
 
-            const cardHTML = `
-                <div class="order-card" onclick="openOrderModal('${order.id}')">
-                    <div class="order-card-header">
-                        <div class="order-status-badge ${statusClass}">
-                            ${statusLabel}
+    // CORREÇÃO: Gerar botões de ação do card
+    console.log(`🚨 GERANDO BOTÕES para card do pedido ${order.displayId}`);
+    const cardActionsHTML = generateCardActionButtons(order);
+    console.log(`🚨 Botões gerados para card:`, cardActionsHTML.substring(0, 100) + '...');
+
+    const cardHTML = `
+        <div class="order-card" onclick="openOrderModal('${order.id}')">
+            <div class="order-card-header">
+                <div class="order-status-badge ${statusClass}">
+                    ${statusLabel}
+                </div>
+                <div class="order-id">
+                    #${order.displayId || order.id}
+                    <span class="real-order-badge">iFood</span>
+                </div>
+                <div class="order-time">${timeString} • ${dateString}</div>
+            </div>
+            
+            <div class="order-card-body">
+                <div class="order-info-grid">
+                    <div class="info-item">
+                        <div class="info-icon icon-customer">👤</div>
+                        <div class="info-content">
+                            <div class="info-label">Cliente</div>
+                            <div class="info-value">${order.customer?.name || 'Nome não informado'}</div>
                         </div>
-                        <div class="order-id">
-                            #${order.displayId || order.id}
-                            <span class="real-order-badge">iFood</span>
-                        </div>
-                        <div class="order-time">${timeString} • ${dateString}</div>
                     </div>
                     
-                    <div class="order-card-body">
-                        <div class="order-info-grid">
-                            <div class="info-item">
-                                <div class="info-icon icon-customer">👤</div>
-                                <div class="info-content">
-                                    <div class="info-label">Cliente</div>
-                                    <div class="info-value">${order.customer?.name || 'Nome não informado'}</div>
-                                </div>
-                            </div>
-                            
-                            <div class="info-item">
-                                <div class="info-icon icon-address">📍</div>
-                                <div class="info-content">
-                                    <div class="info-label">Endereço</div>
-                                    <div class="info-value">${addressText}</div>
-                                </div>
-                            </div>
-                            
-                            <div class="info-item">
-                                <div class="info-icon icon-payment">💳</div>
-                                <div class="info-content">
-                                    <div class="info-label">Pagamento</div>
-                                    <div class="info-value">${paymentText}</div>
-                                </div>
-                            </div>
-                            
-                            <div class="info-item">
-                                <div class="info-icon icon-orders">📊</div>
-                                <div class="info-content">
-                                    <div class="info-label">Pedidos na Loja</div>
-                                    <div class="info-value">${order.customer?.ordersCountOnMerchant || 'N/A'}</div>
-                                </div>
-                            </div>
-                            
-                            <div class="info-item">
-                                <div class="info-icon icon-prep">⏰</div>
-                                <div class="info-content">
-                                    <div class="info-label">Início do Preparo</div>
-                                    <div class="info-value">${prepTime}</div>
-                                </div>
-                            </div>
-
-<div class="info-item">
-    <div class="info-icon" style="background: #dbeafe; color: #1e40af;">🚚</div>
-    <div class="info-content">
-        <div class="info-label">Taxa de Entrega</div>
-        <div class="info-value">${formatCurrency(order.total?.deliveryFee || 0)}</div>
-    </div>
-</div>
-                        </div>
-                        
-                        <div class="order-total">
-                            <div class="total-label">Total do Pedido</div>
-                            <div class="total-value">${total}</div>
-                        </div>
-                        
-                        <div class="card-actions">
-                            ${cardActionsHTML}
+                    <div class="info-item">
+                        <div class="info-icon icon-address">📍</div>
+                        <div class="info-content">
+                            <div class="info-label">Endereço</div>
+                            <div class="info-value">${addressText}</div>
                         </div>
                     </div>
+                    
+                    <div class="info-item">
+                        <div class="info-icon icon-payment">💳</div>
+                        <div class="info-content">
+                            <div class="info-label">Pagamento</div>
+                            <div class="info-value">${paymentText}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-icon icon-orders">📊</div>
+                        <div class="info-content">
+                            <div class="info-label">Pedidos na Loja</div>
+                            <div class="info-value">${order.customer?.ordersCountOnMerchant || 'N/A'}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-icon icon-prep">⏰</div>
+                        <div class="info-content">
+                            <div class="info-label">Início do Preparo</div>
+                            <div class="info-value">${prepTime}</div>
+                        </div>
+                    </div>
+
+                    <div class="info-item">
+                        <div class="info-icon" style="background: #dbeafe; color: #1e40af;">🚚</div>
+                        <div class="info-content">
+                            <div class="info-label">Taxa de Entrega</div>
+                            <div class="info-value">${formatCurrency(order.total?.deliveryFee || 0)}</div>
+                        </div>
+                    </div>
+
+                    ${delivery ? `
+                    <div class="info-item">
+                        <div class="info-icon" style="background: #dcfce7; color: #166534;">🏍️</div>
+                        <div class="info-content">
+                            <div class="info-label">Motoboy</div>
+                            <div class="info-value">${delivery.deliveryName}</div>
+                        </div>
+                    </div>
+                    ` : ''}
                 </div>
-            `;
-            
-            console.log(`🔧 DEBUG createOrderCard: HTML final (primeiro 200 chars):`, cardHTML.substring(0, 200) + '...');
-            return cardHTML;
-        }
+                
+                <div class="order-total">
+                    <div class="total-label">Total do Pedido</div>
+                    <div class="total-value">${total}</div>
+                </div>
+                
+                <div class="card-actions">
+                    ${cardActionsHTML}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    console.log(`🔧 DEBUG createOrderCard: HTML final (primeiro 200 chars):`, cardHTML.substring(0, 200) + '...');
+    return cardHTML;
+}
 
         function openOrderModal(orderId) {
             const order = orders.get(orderId);
