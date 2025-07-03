@@ -2779,5 +2779,201 @@ function notifyNewOrder() {
         window.generateReport = generateReport;
         window.logout = logout;
     </script>
+
+    <!-- ====================================== -->
+<!-- SCRIPT PARA ADICIONAR COMPLEMENTO E ITENS NOS CARDS DO MOTOBOY -->
+<!-- ====================================== -->
+<!-- Adicione este código no final do motoboy.html, antes do fechamento do </body> -->
+
+<script>
+// ====================================
+// MOTOBOY CARD ENHANCEMENT v1.0
+// ====================================
+console.log('🔧 Carregando Motoboy Card Enhancement...');
+
+// Aguardar o DOM estar carregado
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 DOM carregado, inicializando Card Enhancement...');
+    
+    // Aguardar um pouco para garantir que as funções estão disponíveis
+    setTimeout(() => {
+        setupCardEnhancement();
+    }, 2000);
+});
+
+function setupCardEnhancement() {
+    console.log('🔧 Configurando Card Enhancement...');
+    
+    // Verificar se a função createOrderCard existe
+    if (typeof window.createOrderCard === 'function') {
+        console.log('✅ Função createOrderCard encontrada, substituindo...');
+        
+        // Salvar referência da função original
+        window.originalCreateOrderCard = window.createOrderCard;
+        
+        // Substituir pela versão aprimorada
+        window.createOrderCard = function(assignment) {
+            const order = assignment.order;
+            const createdAt = new Date(order.createdAt);
+            const timeString = createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const dateString = createdAt.toLocaleDateString('pt-BR');
+
+            const customerName = order.customer?.name || 'Cliente';
+            const total = formatCurrency(order.total?.orderAmount || 0);
+            
+            // ✅ ENDEREÇO COM COMPLEMENTO
+            const address = order.delivery?.deliveryAddress;
+            let addressText = 'Retirada no local';
+            
+            if (address) {
+                // Endereço principal
+                addressText = `${address.streetName || ''} ${address.streetNumber || ''}, ${address.neighborhood || ''}`.trim();
+                
+                // ✅ ADICIONAR COMPLEMENTO SE EXISTIR
+                if (address.complement && address.complement.trim()) {
+                    addressText += ` - ${address.complement.trim()}`;
+                }
+            }
+
+            // Forma de pagamento
+            const mainPayment = order.payments?.methods?.[0];
+            const paymentText = mainPayment ? getPaymentMethodLabel(mainPayment) : 'N/A';
+
+            // ✅ ITENS DO PEDIDO - DADOS REAIS DA API
+            let itemsText = 'Não informado';
+            if (order.items && order.items.length > 0) {
+                // Pegar os 3 primeiros itens para não sobrecarregar o card
+                const displayItems = order.items.slice(0, 3);
+                itemsText = displayItems.map(item => {
+                    return `${item.quantity}x ${item.name}`;
+                }).join(', ');
+                
+                // Se tem mais itens, mostrar indicador
+                if (order.items.length > 3) {
+                    itemsText += ` e mais ${order.items.length - 3} item(s)`;
+                }
+            }
+
+            // Observações dos itens
+            let observations = [];
+            if (order.items && order.items.length > 0) {
+                order.items.forEach(item => {
+                    if (item.observations && item.observations.trim()) {
+                        observations.push(`${item.name}: ${item.observations}`);
+                    }
+                });
+            }
+
+            // Status e botões baseados no status da atribuição
+            let statusText = '';
+            let actionButtons = '';
+            
+            if (assignment.status === 'sent') {
+                statusText = '📨 Pedido Enviado';
+                actionButtons = `
+                    <button class="btn btn-accept" onclick="acceptOrder('${assignment.id}')">
+                        ✅ Aceitar Pedido
+                    </button>
+                `;
+            } else if (assignment.status === 'accepted') {
+                statusText = '✅ Pedido Aceito';
+                actionButtons = `
+                    <button class="btn btn-dispatch" onclick="dispatchOrder('${assignment.id}')">
+                        🚀 Despachar Pedido
+                    </button>
+                `;
+            } else if (assignment.status === 'dispatched') {
+                statusText = '🚀 Pedido Despachado';
+                actionButtons = `
+                    <button class="btn" style="background: #f59e0b; color: white;" onclick="confirmDeliveryCode('${assignment.id}')">
+                        🔢 Confirmar Código
+                    </button>
+                    <button class="btn" style="background: #6b7280; color: white; margin-top: 0.5rem;" onclick="finishWithoutCode('${assignment.id}')">
+                        ✅ Finalizar Sem Código
+                    </button>
+                `;
+            }
+
+            return `
+                <div class="order-card" onclick="openOrderModal('${assignment.id}')">
+                    <div class="order-card-header">
+                        <div class="order-id">#${order.displayId}</div>
+                        <div class="order-time">${timeString} • ${dateString}</div>
+                        <div style="margin-top: 0.5rem; font-size: 0.875rem; opacity: 0.9;">${statusText}</div>
+                    </div>
+                    
+                    <div class="order-card-body">
+                        <div class="order-info">
+                            <div class="info-label">Cliente</div>
+                            <div class="info-value">${customerName}</div>
+                        </div>
+                        
+                        <div class="order-info">
+                            <div class="info-label">Endereço</div>
+                            <div class="info-value">${addressText}</div>
+                        </div>
+                        
+                        <div class="order-info">
+                            <div class="info-label">Itens</div>
+                            <div class="info-value" style="font-size: 0.8rem; line-height: 1.3;">${itemsText}</div>
+                        </div>
+                        
+                        <div class="order-info">
+                            <div class="info-label">Pagamento</div>
+                            <div class="info-value">${paymentText}</div>
+                        </div>
+                        
+                        ${observations.length > 0 ? `
+                        <div class="order-info">
+                            <div class="info-label">Observações</div>
+                            <div class="info-value observations-text">${observations.join('; ')}</div>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="order-total">
+                            <div class="total-value">${total}</div>
+                        </div>
+                        
+                        <div class="order-actions" onclick="event.stopPropagation()">
+                            ${actionButtons}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+        
+        console.log('✅ Função createOrderCard substituída com sucesso!');
+        
+    } else {
+        console.warn('⚠️ Função createOrderCard não encontrada');
+    }
+}
+
+console.log('✅ Motoboy Card Enhancement v1.0 carregado!');
+</script>
+
+<!-- Estilos adicionais para melhorar a visualização -->
+<style>
+/* Estilos para melhorar a visualização dos itens */
+.order-card .order-info .info-value {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Estilo específico para os itens */
+.order-card .order-info:has(.info-label:contains("Itens")) .info-value {
+    font-size: 0.8rem;
+    line-height: 1.3;
+    color: #4b5563;
+}
+
+/* Melhorar quebra de linha para endereços longos */
+.order-card .order-info:has(.info-label:contains("Endereço")) .info-value {
+    font-size: 0.8rem;
+    line-height: 1.3;
+}
+</style>
+
+<!-- FIM DO SCRIPT - Adicione antes do fechamento do </body> -->
 </body>
 </html>
