@@ -2172,17 +2172,6 @@ function updateDeliveryFeesTotal() {
         <div class="info-value">${formatCurrency(order.total?.deliveryFee || 0)}</div>
     </div>
 </div>
-// Verificar se pedido foi atribuído a um motoboy
-const delivery = deliveryAssignments.get(order.id);
-${delivery ? `
-<div class="info-item">
-    <div class="info-icon" style="background: #dcfce7; color: #166534;">🏍️</div>
-    <div class="info-content">
-        <div class="info-label">Motoboy</div>
-        <div class="info-value">${delivery.deliveryName}</div>
-    </div>
-</div>
-` : ''}
                         </div>
                         
                         <div class="order-total">
