@@ -4300,5 +4300,591 @@ console.log('✅ Modal Assignment Addon v1.1 carregado com sucesso!');
 </script>
 
 <!-- FIM DO SCRIPT - Substitua o script anterior por este -->
+
+<!-- ====================================== -->
+<!-- SISTEMA DE NOTIFICAÇÕES DE ENDEREÇOS DUPLICADOS -->
+<!-- COLE ESTE CÓDIGO ANTES DO FECHAMENTO </body> -->
+<!-- ====================================== -->
+
+<style>
+/* Notificação de endereços duplicados */
+.duplicate-notification {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    background: white;
+    border: 2px solid #f59e0b;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    z-index: 1003;
+    max-width: 450px;
+    min-width: 350px;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s ease;
+}
+
+.duplicate-notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.duplicate-notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.duplicate-notification-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #92400e;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.duplicate-notification-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.duplicate-notification-close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.duplicate-notification-body {
+    margin-bottom: 1rem;
+}
+
+.duplicate-address {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.duplicate-address-title {
+    font-weight: 600;
+    color: #92400e;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.duplicate-orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.duplicate-order-item {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.duplicate-order-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.duplicate-order-number {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 0.875rem;
+}
+
+.duplicate-order-customer {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.duplicate-order-delivery {
+    font-size: 0.75rem;
+    color: #059669;
+    font-weight: 500;
+}
+
+.duplicate-notification-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.duplicate-notification-btn {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+}
+
+.duplicate-notification-btn.primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.duplicate-notification-btn.primary:hover {
+    background: #2563eb;
+}
+
+.duplicate-notification-btn.secondary {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.duplicate-notification-btn.secondary:hover {
+    background: #e5e7eb;
+}
+
+/* Ajustar posição dos toasts quando há notificação duplicada */
+.duplicate-notification ~ .toast {
+    top: calc(2rem + 250px) !important;
+}
+
+/* Botão de verificar duplicados no header */
+.btn-check-duplicates {
+    padding: 0.5rem 1rem;
+    background: #f59e0b;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-right: 1rem;
+}
+
+.btn-check-duplicates:hover {
+    background: #d97706;
+    transform: translateY(-1px);
+}
+</style>
+
+<script>
+// ====================================
+// SISTEMA DE NOTIFICAÇÕES DE ENDEREÇOS DUPLICADOS
+// ====================================
+
+// Variáveis globais para o sistema de duplicados
+window.shownDuplicateNotifications = window.shownDuplicateNotifications || new Set();
+window.activeNotifications = window.activeNotifications || new Map();
+
+// Adicionar key para localStorage
+if (typeof STORAGE_KEYS !== 'undefined') {
+    STORAGE_KEYS.DUPLICATE_NOTIFICATIONS = 'cabana_delivery_duplicate_notifications';
+}
+
+// ============ FUNÇÕES PRINCIPAIS ============
+
+// Carregar notificações já mostradas
+function loadDuplicateNotifications() {
+    try {
+        const storageKey = 'cabana_delivery_duplicate_notifications';
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+            const data = JSON.parse(stored);
+            window.shownDuplicateNotifications = new Set(data.shown || []);
+            
+            // Recriar notificações ativas
+            if (data.active) {
+                for (const [key, notificationData] of Object.entries(data.active)) {
+                    window.activeNotifications.set(key, notificationData);
+                    createDuplicateNotification(notificationData.duplicates, key, false);
+                }
+            }
+            
+            console.log(`📋 ${window.shownDuplicateNotifications.size} notificações duplicadas carregadas`);
+        }
+    } catch (error) {
+        console.error('❌ Erro ao carregar notificações duplicadas:', error);
+    }
+}
+
+// Salvar notificações já mostradas
+function saveDuplicateNotifications() {
+    try {
+        const activeData = {};
+        for (const [key, value] of window.activeNotifications) {
+            activeData[key] = value;
+        }
+        
+        const data = {
+            shown: Array.from(window.shownDuplicateNotifications),
+            active: activeData
+        };
+        
+        const storageKey = 'cabana_delivery_duplicate_notifications';
+        localStorage.setItem(storageKey, JSON.stringify(data));
+        console.log('💾 Notificações duplicadas salvas');
+    } catch (error) {
+        console.error('❌ Erro ao salvar notificações duplicadas:', error);
+    }
+}
+
+// Normalizar endereço para comparação
+function normalizeAddress(address) {
+    if (!address) return '';
+    
+    const parts = [];
+    
+    // Adicionar componentes principais do endereço
+    if (address.streetName) parts.push(address.streetName.toLowerCase().trim());
+    if (address.streetNumber) parts.push(address.streetNumber.toLowerCase().trim());
+    if (address.neighborhood) parts.push(address.neighborhood.toLowerCase().trim());
+    if (address.city) parts.push(address.city.toLowerCase().trim());
+    if (address.postalCode) parts.push(address.postalCode.replace(/\D/g, ''));
+    
+    return parts.join('|');
+}
+
+// Verificar endereços duplicados
+function checkForDuplicateAddresses() {
+    console.log('🔍 Verificando endereços duplicados...');
+    
+    // Verificar se orders existe
+    if (typeof orders === 'undefined') {
+        console.warn('⚠️ Variable orders não encontrada');
+        return;
+    }
+    
+    const addressGroups = new Map();
+    
+    // Agrupar pedidos por endereço
+    for (const [orderId, order] of orders) {
+        // Apenas pedidos de entrega com endereço válido
+        if (order.orderType === 'DELIVERY' && order.delivery?.deliveryAddress) {
+            const normalizedAddress = normalizeAddress(order.delivery.deliveryAddress);
+            
+            if (normalizedAddress) {
+                if (!addressGroups.has(normalizedAddress)) {
+                    addressGroups.set(normalizedAddress, []);
+                }
+                addressGroups.get(normalizedAddress).push(order);
+            }
+        }
+    }
+    
+    console.log(`🔍 Grupos de endereços encontrados: ${addressGroups.size}`);
+    
+    // Verificar grupos com 2 ou mais pedidos
+    for (const [address, orderList] of addressGroups) {
+        if (orderList.length >= 2) {
+            const notificationKey = `addr_${address}`;
+            
+            console.log(`🏠 Endereço com ${orderList.length} pedidos:`, {
+                address: orderList[0].delivery.deliveryAddress,
+                pedidos: orderList.map(o => ({ id: o.displayId, customer: o.customer?.name })),
+                notificationKey,
+                jaFoiMostrada: window.shownDuplicateNotifications.has(notificationKey)
+            });
+            
+            // Verificar se já foi mostrada esta notificação
+            if (!window.shownDuplicateNotifications.has(notificationKey)) {
+                console.log(`🚨 NOVA NOTIFICAÇÃO: Endereço duplicado encontrado: ${orderList.length} pedidos`);
+                
+                const duplicateInfo = {
+                    address: orderList[0].delivery.deliveryAddress,
+                    orders: orderList.map(order => ({
+                        id: order.id,
+                        displayId: order.displayId,
+                        customer: order.customer,
+                        total: order.total,
+                        delivery: (typeof deliveryAssignments !== 'undefined') ? deliveryAssignments.get(order.id) : null
+                    }))
+                };
+                
+                createDuplicateNotification(duplicateInfo, notificationKey, true);
+                window.shownDuplicateNotifications.add(notificationKey);
+            } else {
+                console.log(`ℹ️ Notificação já foi mostrada anteriormente para este endereço`);
+            }
+        }
+    }
+    
+    saveDuplicateNotifications();
+    console.log(`🔍 Verificação concluída. Notificações ativas: ${window.activeNotifications.size}`);
+}
+
+// Criar notificação de endereço duplicado
+function createDuplicateNotification(duplicateInfo, notificationKey, isNew = true) {
+    console.log(`📢 Criando notificação de endereço duplicado: ${duplicateInfo.orders.length} pedidos`);
+    
+    // Verificar se já existe uma notificação ativa para este endereço
+    if (document.getElementById(`duplicate-notification-${notificationKey}`)) {
+        console.log('⚠️ Notificação já existe para este endereço');
+        return;
+    }
+    
+    const notification = document.createElement('div');
+    notification.className = 'duplicate-notification';
+    notification.id = `duplicate-notification-${notificationKey}`;
+    
+    const address = duplicateInfo.address;
+    const addressText = address.formattedAddress || 
+        `${address.streetName || ''} ${address.streetNumber || ''}, ${address.neighborhood || ''}`.trim();
+    
+    // Função para formatar moeda
+    const formatCurrency = (value) => {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(value || 0);
+    };
+    
+    notification.innerHTML = `
+        <div class="duplicate-notification-header">
+            <div class="duplicate-notification-title">
+                🏠 Endereços Duplicados
+            </div>
+            <button class="duplicate-notification-close" onclick="closeDuplicateNotification('${notificationKey}')">
+                ×
+            </button>
+        </div>
+        
+        <div class="duplicate-notification-body">
+            <div class="duplicate-address">
+                <div class="duplicate-address-title">
+                    📍 ${addressText}
+                </div>
+                <div class="duplicate-orders-list">
+                    ${duplicateInfo.orders.map(order => `
+                        <div class="duplicate-order-item">
+                            <div class="duplicate-order-info">
+                                <div class="duplicate-order-number">#${order.displayId}</div>
+                                <div class="duplicate-order-customer">${order.customer?.name || 'N/A'}</div>
+                                ${order.delivery ? `<div class="duplicate-order-delivery">🏍️ ${order.delivery.deliveryName}</div>` : ''}
+                            </div>
+                            <div style="font-weight: 600; color: #059669;">
+                                ${formatCurrency(order.total?.orderAmount || 0)}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+        
+        <div class="duplicate-notification-actions">
+            <button class="duplicate-notification-btn primary" onclick="openMapFromDuplicate('${notificationKey}')">
+                🗺️ Ver no Mapa
+            </button>
+            <button class="duplicate-notification-btn secondary" onclick="closeDuplicateNotification('${notificationKey}')">
+                Fechar
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Armazenar notificação ativa
+    window.activeNotifications.set(notificationKey, {
+        duplicates: duplicateInfo,
+        createdAt: new Date().toISOString()
+    });
+    
+    // Animar entrada
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+    
+    // Salvar estado se for nova
+    if (isNew) {
+        saveDuplicateNotifications();
+    }
+    
+    console.log(`✅ Notificação de endereço duplicado criada: ${notificationKey}`);
+}
+
+// Fechar notificação de endereço duplicado
+function closeDuplicateNotification(notificationKey) {
+    const notification = document.getElementById(`duplicate-notification-${notificationKey}`);
+    if (notification) {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }
+    
+    // Remover da lista de notificações ativas
+    window.activeNotifications.delete(notificationKey);
+    saveDuplicateNotifications();
+    
+    console.log(`❌ Notificação de endereço duplicado fechada: ${notificationKey}`);
+}
+
+// Abrir mapa a partir da notificação
+function openMapFromDuplicate(notificationKey) {
+    const notification = window.activeNotifications.get(notificationKey);
+    if (notification) {
+        // Fechar notificação
+        closeDuplicateNotification(notificationKey);
+        
+        // Abrir mapa se a função existir
+        if (typeof openMapModal === 'function') {
+            openMapModal();
+            
+            // Selecionar os pedidos automaticamente após o mapa carregar
+            setTimeout(() => {
+                const orderIds = notification.duplicates.orders.map(order => order.id);
+                
+                // Verificar se as variáveis globais existem
+                if (typeof selectedOrders !== 'undefined' && typeof orders !== 'undefined') {
+                    orderIds.forEach(orderId => {
+                        if (orders.has(orderId)) {
+                            selectedOrders.add(orderId);
+                        }
+                    });
+                    
+                    if (typeof updateSendButton === 'function') {
+                        updateSendButton();
+                    }
+                    if (typeof loadMapOrders === 'function') {
+                        loadMapOrders();
+                    }
+                    if (typeof showToast === 'function') {
+                        showToast(`📍 ${orderIds.length} pedidos selecionados no mapa`, 'success');
+                    }
+                }
+            }, 1000);
+        } else {
+            console.warn('⚠️ Função openMapModal não encontrada');
+        }
+    }
+}
+
+// ============ INTEGRAÇÃO COM SISTEMA EXISTENTE ============
+
+// Interceptar função de processamento de eventos (se existir)
+if (typeof window.processEvents === 'function') {
+    const originalProcessEvents = window.processEvents;
+    window.processEvents = async function(events) {
+        const result = await originalProcessEvents(events);
+        
+        // Verificar duplicados após processar eventos
+        setTimeout(() => {
+            checkForDuplicateAddresses();
+        }, 500);
+        
+        return result;
+    };
+}
+
+// Interceptar função de renderização (se existir)
+if (typeof window.renderOrders === 'function') {
+    const originalRenderOrders = window.renderOrders;
+    window.renderOrders = function() {
+        const result = originalRenderOrders();
+        
+        // Verificar duplicados após renderizar
+        setTimeout(() => {
+            checkForDuplicateAddresses();
+        }, 500);
+        
+        return result;
+    };
+}
+
+// Interceptar função de limpeza de storage (se existir)
+if (typeof window.clearStorage === 'function') {
+    const originalClearStorage = window.clearStorage;
+    window.clearStorage = function() {
+        // Limpar notificações duplicadas
+        const storageKey = 'cabana_delivery_duplicate_notifications';
+        localStorage.removeItem(storageKey);
+        window.shownDuplicateNotifications.clear();
+        window.activeNotifications.clear();
+        
+        // Fechar todas as notificações duplicadas ativas
+        document.querySelectorAll('.duplicate-notification').forEach(notification => {
+            notification.remove();
+        });
+        
+        return originalClearStorage();
+    };
+}
+
+// ============ INICIALIZAÇÃO ============
+
+// Aguardar DOM estar pronto
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🏠 Carregando sistema de notificações de endereços duplicados...');
+    
+    // Carregar notificações salvas
+    setTimeout(() => {
+        loadDuplicateNotifications();
+    }, 1000);
+    
+    // Verificar duplicados na inicialização
+    setTimeout(() => {
+        checkForDuplicateAddresses();
+    }, 2000);
+    
+    // Adicionar botão de verificar duplicados ao header
+    setTimeout(() => {
+        const headerActions = document.querySelector('.header-actions');
+        if (headerActions) {
+            const checkDuplicatesBtn = document.createElement('button');
+            checkDuplicatesBtn.className = 'btn-check-duplicates';
+            checkDuplicatesBtn.innerHTML = '🏠 Verificar Duplicados';
+            checkDuplicatesBtn.title = 'Verificar endereços duplicados';
+            checkDuplicatesBtn.onclick = () => {
+                console.log('🏠 Verificação manual de endereços duplicados solicitada');
+                checkForDuplicateAddresses();
+                if (typeof showToast === 'function') {
+                    showToast('🔍 Verificação de endereços duplicados realizada', 'info');
+                }
+            };
+            
+            // Inserir antes do botão do mapa
+            const mapBtn = document.getElementById('mapBtn');
+            if (mapBtn) {
+                headerActions.insertBefore(checkDuplicatesBtn, mapBtn);
+            } else {
+                headerActions.appendChild(checkDuplicatesBtn);
+            }
+            
+            console.log('✅ Botão de verificar duplicados adicionado ao header');
+        }
+    }, 3000);
+    
+    console.log('✅ Sistema de notificações de endereços duplicados carregado!');
+});
+
+// Tornar funções globais
+window.checkForDuplicateAddresses = checkForDuplicateAddresses;
+window.closeDuplicateNotification = closeDuplicateNotification;
+window.openMapFromDuplicate = openMapFromDuplicate;
+window.createDuplicateNotification = createDuplicateNotification;
+window.loadDuplicateNotifications = loadDuplicateNotifications;
+window.saveDuplicateNotifications = saveDuplicateNotifications;
+
+console.log('🏠 Sistema de Notificações de Endereços Duplicados carregado com sucesso!');
+</script>
+
+<!-- FIM DO SISTEMA DE NOTIFICAÇÕES DE ENDEREÇOS DUPLICADOS -->
 </body>
 </html>
