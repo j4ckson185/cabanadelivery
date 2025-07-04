@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cabana Delivery - Entregador</title>
     
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#8b5cf6">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Cabana Delivery">
+    <meta name="description" content="App para entregadores do Cabana Delivery">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- PWA Icons -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiByeD0iNDgiIGZpbGw9IiM4YjVjZjYiLz4KPHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSg0OCwgNDgpIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSAyLjI2TDEyIDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4KPC9zdmc+">
+    
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -47,6 +61,92 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             color: #1e293b;
+        }
+
+        /* PWA Specific Styles */
+        .pwa-install-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            z-index: 4000;
+            transform: translateY(-100%);
+            transition: transform 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .pwa-install-banner.show {
+            transform: translateY(0);
+        }
+
+        .pwa-install-btn {
+            background: white;
+            color: #10b981;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-left: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .pwa-install-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .pwa-status-indicator {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #10b981;
+            z-index: 3000;
+            animation: pulse 2s infinite;
+        }
+
+        .pwa-status-indicator.offline {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        .floating-install-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            cursor: pointer;
+            z-index: 3000;
+            animation: bounce 2s infinite;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .floating-install-btn.show {
+            display: block;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
         }
 
         /* Login Screen */
@@ -193,35 +293,13 @@
             background: #f1f5f9;
         }
 
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .user-name {
-            font-weight: 600;
-            color: #1e293b;
-        }
-
-        .logout-btn {
-            padding: 0.5rem 1rem;
-            background: #ef4444;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.875rem;
-            cursor: pointer;
-        }
-
         .main-content {
             max-width: 1200px;
             margin: 0 auto;
             padding: 2rem;
-            padding-bottom: 100px; /* Espaço para botão fixo */
+            padding-bottom: 100px;
         }
 
-        /* Navigation Tabs */
         .nav-tabs {
             display: flex;
             gap: 0.5rem;
@@ -231,7 +309,7 @@
             padding: 0.5rem;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             position: relative;
-            z-index: 50; /* Sempre acima do mapa */
+            z-index: 50;
         }
 
         .nav-tab {
@@ -260,7 +338,6 @@
             color: white;
         }
 
-        /* Tab Content */
         .tab-content {
             display: none;
         }
@@ -269,40 +346,6 @@
             display: block;
         }
 
-        /* Stats Cards */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            border: 1px solid #e2e8f0;
-        }
-
-        .stat-label {
-            font-size: 0.875rem;
-            color: #64748b;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #1e293b;
-        }
-
-        .stat-icon {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        /* Orders Grid */
         .orders-section {
             margin-top: 2rem;
         }
@@ -373,6 +416,8 @@
             color: #1e293b;
             font-weight: 500;
             font-size: 0.875rem;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .order-total {
@@ -442,7 +487,6 @@
             opacity: 0.5;
         }
 
-        /* Fixed Footer Button */
         .fixed-footer {
             position: fixed;
             bottom: 0;
@@ -483,11 +527,6 @@
             transform: none;
         }
 
-        .accept-all-btn:disabled:hover {
-            transform: none;
-        }
-
-        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -544,7 +583,6 @@
             overflow-y: auto;
         }
 
-        /* Map Section */
         .map-container {
             background: white;
             border-radius: 0;
@@ -552,11 +590,11 @@
             box-shadow: none;
             border: none;
             position: fixed;
-            top: 140px; /* Altura do cabeçalho + abas */
+            top: 140px;
             left: 0;
             right: 0;
             bottom: 0;
-            z-index: 40; /* Menor que as abas */
+            z-index: 40;
         }
 
         .map-header {
@@ -572,7 +610,7 @@
 
         #deliveryMap {
             width: 100%;
-            height: calc(100vh - 200px); /* Tela inteira menos cabeçalho, abas e header do mapa */
+            height: calc(100vh - 200px);
         }
 
         .map-legend {
@@ -612,7 +650,6 @@
             color: #1e293b;
         }
 
-        /* Toast */
         .toast {
             position: fixed;
             top: 2rem;
@@ -646,7 +683,6 @@
             border-left: 4px solid #3b82f6;
         }
 
-        /* Observações */
         .observations-text {
             background: #fef3c7;
             border: 1px solid #fcd34d;
@@ -658,7 +694,6 @@
             margin-top: 0.25rem;
         }
 
-        /* Reports Modal */
         .reports-modal {
             display: none;
             position: fixed;
@@ -761,6 +796,112 @@
             background: #7c3aed;
         }
 
+        .user-location-marker {
+            width: 20px;
+            height: 20px;
+            background: #3b82f6;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+            animation: pulse-location 2s infinite;
+            position: relative;
+        }
+
+        .user-location-marker::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+        }
+
+        @keyframes pulse-location {
+            0% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
+        }
+
+        .rotation-controls {
+            position: absolute;
+            top: 60px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            max-width: 35px;
+        }
+
+        .rotation-btn {
+            width: 35px;
+            height: 35px;
+            background: white;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+
+        .rotation-btn:hover {
+            background: #f4f4f4;
+        }
+
+        .rotation-btn:active {
+            background: #e4e4e4;
+        }
+
+        .leaflet-container {
+            touch-action: pan-x pan-y pinch-zoom !important;
+        }
+
+        .leaflet-tile {
+            image-rendering: auto;
+        }
+
+        .leaflet-zoom-animated {
+            transition: transform 0.25s ease-out;
+        }
+
+        .sound-toast {
+            position: fixed;
+            top: 90px;
+            right: 2rem;
+            background: #10b981;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 2000;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+
+        .sound-toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .main-content {
@@ -783,7 +924,7 @@
             }
 
             .map-container {
-                top: 130px; /* Cabeçalho + abas no mobile */
+                top: 130px;
             }
 
             #deliveryMap {
@@ -804,6 +945,10 @@
 
             .reports-content {
                 width: 95%;
+            }
+
+            .floating-install-btn {
+                bottom: 90px;
             }
         }
 
@@ -834,122 +979,29 @@
             #deliveryMap {
                 height: calc(100vh - 180px);
             }
+
+            .floating-install-btn {
+                bottom: 90px;
+            }
         }
-
-        /* Marcador de localização do usuário */
-.user-location-marker {
-    width: 20px;
-    height: 20px;
-    background: #3b82f6;
-    border: 3px solid white;
-    border-radius: 50%;
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
-    animation: pulse-location 2s infinite;
-    position: relative;
-}
-
-.user-location-marker::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 8px;
-    height: 8px;
-    background: white;
-    border-radius: 50%;
-}
-
-@keyframes pulse-location {
-    0% {
-        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-    }
-}
-
-        /* Controles de rotação do mapa - versão simplificada */
-.rotation-controls {
-    position: absolute;
-    top: 60px;
-    right: 10px;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    max-width: 35px;
-}
-
-.rotation-btn {
-    width: 35px;
-    height: 35px;
-    background: white;
-    border: 2px solid rgba(0,0,0,0.2);
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
-    color: #333;
-    box-shadow: 0 1px 5px rgba(0,0,0,0.65);
-    user-select: none;
-    transition: all 0.2s ease;
-}
-
-.rotation-btn:hover {
-    background: #f4f4f4;
-}
-
-.rotation-btn:active {
-    background: #e4e4e4;
-}
-
-/* Permitir rotação do mapa - versão simplificada */
-.leaflet-container {
-    touch-action: pan-x pan-y pinch-zoom !important;
-}
-
-/* Otimizações básicas para tiles do mapa */
-.leaflet-tile {
-    image-rendering: auto; /* ✅ Mudado para auto para melhor compatibilidade */
-}
-
-/* Suavizar animações de zoom */
-.leaflet-zoom-animated {
-    transition: transform 0.25s ease-out;
-}
-
-/* Toast de notificação de som */
-.sound-toast {
-    position: fixed;
-    top: 90px;
-    right: 2rem;
-    background: #10b981;
-    color: white;
-    padding: 1rem 1.5rem;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 2000;
-    opacity: 0;
-    transform: translateX(100%);
-    transition: all 0.3s ease;
-}
-
-.sound-toast.show {
-    opacity: 1;
-    transform: translateX(0);
-}
     </style>
 </head>
 <body>
+    <!-- PWA Status Indicator -->
+    <div id="pwaStatusIndicator" class="pwa-status-indicator"></div>
+
+    <!-- PWA Install Banner -->
+    <div id="pwaInstallBanner" class="pwa-install-banner">
+        <span>📱 Instale o app para melhor experiência!</span>
+        <button id="pwaInstallBtn" class="pwa-install-btn">Instalar</button>
+        <button id="pwaCloseBanner" class="pwa-install-btn" style="background: transparent; color: white; border: 1px solid white;">Fechar</button>
+    </div>
+
+    <!-- Floating Install Button -->
+    <button id="floatingInstallBtn" class="floating-install-btn">
+        📱 Instalar App
+    </button>
+
     <!-- Login Screen -->
     <div id="loginScreen" class="login-container">
         <div class="login-card">
@@ -1111,6 +1163,170 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
+        // ============================================
+        // PWA FUNCTIONALITY
+        // ============================================
+        
+        let deferredPrompt;
+        let isInstalled = false;
+
+        // Check if already installed
+        if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) {
+            isInstalled = true;
+            console.log('✅ PWA já está instalado');
+        }
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('✅ Service Worker registrado:', registration.scope);
+                        
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            console.log('🔄 Nova versão disponível');
+                            showUpdateToast();
+                        });
+                    })
+                    .catch((error) => {
+                        console.log('❌ Service Worker falhou:', error);
+                    });
+            });
+        }
+
+        // Install prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            if (!isInstalled) {
+                showInstallPrompt();
+            }
+        });
+
+        // App installed
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('✅ App instalado com sucesso');
+            isInstalled = true;
+            hideInstallPrompt();
+            showToast('✅ App instalado com sucesso!', 'success');
+        });
+
+        // Connection status
+        function updateConnectionStatus() {
+            const indicator = document.getElementById('pwaStatusIndicator');
+            if (navigator.onLine) {
+                indicator.classList.remove('offline');
+                indicator.title = 'Online';
+            } else {
+                indicator.classList.add('offline');
+                indicator.title = 'Offline';
+            }
+        }
+
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
+        updateConnectionStatus();
+
+        // Show install prompt
+        function showInstallPrompt() {
+            const banner = document.getElementById('pwaInstallBanner');
+            const floatingBtn = document.getElementById('floatingInstallBtn');
+            
+            // Show banner for 5 seconds, then show floating button
+            banner.classList.add('show');
+            
+            setTimeout(() => {
+                banner.classList.remove('show');
+                floatingBtn.classList.add('show');
+            }, 5000);
+        }
+
+        // Hide install prompt
+        function hideInstallPrompt() {
+            const banner = document.getElementById('pwaInstallBanner');
+            const floatingBtn = document.getElementById('floatingInstallBtn');
+            
+            banner.classList.remove('show');
+            floatingBtn.classList.remove('show');
+        }
+
+        // Install app
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('✅ Usuário aceitou instalar');
+                    } else {
+                        console.log('❌ Usuário rejeitou instalar');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+
+        // Show update toast
+        function showUpdateToast() {
+            const toast = document.createElement('div');
+            toast.className = 'toast info show';
+            toast.innerHTML = `
+                <div>🔄 Nova versão disponível!</div>
+                <button onclick="updateApp()" style="background: #3b82f6; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; margin-top: 0.5rem; cursor: pointer;">
+                    Atualizar
+                </button>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 10000);
+        }
+
+        // Update app
+        function updateApp() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    registrations.forEach(registration => {
+                        registration.update();
+                    });
+                });
+            }
+            window.location.reload();
+        }
+
+        // Push notifications setup
+        if ('Notification' in window && 'serviceWorker' in navigator) {
+            // Request permission on first interaction
+            document.addEventListener('click', requestNotificationPermission, { once: true });
+        }
+
+        function requestNotificationPermission() {
+            if (Notification.permission === 'default') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        console.log('✅ Permissão para notificações concedida');
+                    }
+                });
+            }
+        }
+
+        // Event listeners
+        document.getElementById('pwaInstallBtn').addEventListener('click', installApp);
+        document.getElementById('floatingInstallBtn').addEventListener('click', installApp);
+        document.getElementById('pwaCloseBanner').addEventListener('click', () => {
+            document.getElementById('pwaInstallBanner').classList.remove('show');
+            setTimeout(() => {
+                document.getElementById('floatingInstallBtn').classList.add('show');
+            }, 500);
+        });
+
+        // ============================================
+        // ORIGINAL APP CODE
+        // ============================================
+        
         // Estado da aplicação
         let currentUser = null;
         let userDeliveryId = null;
@@ -1551,10 +1767,10 @@
 
         // ============ FUNCIONALIDADES DO MAPA ============
 
- // Variáveis para rotação
-let mapRotation = 0;
-let isRotating = false;
-let lastTouchAngle = 0;
+        // Variáveis para rotação
+        let mapRotation = 0;
+        let isRotating = false;
+        let lastTouchAngle = 0;
 
         // Inicializar mapa
         function initializeMap() {
@@ -1656,253 +1872,253 @@ let lastTouchAngle = 0;
         }
 
         // Adicionar controles de rotação - versão simplificada
-function addRotationControls() {
-    const mapContainer = document.getElementById('deliveryMap');
-    
-    const controlsDiv = document.createElement('div');
-    controlsDiv.className = 'rotation-controls';
-    
-    // Botão rotacionar horário
-    const rotateRightBtn = document.createElement('div');
-    rotateRightBtn.className = 'rotation-btn';
-    rotateRightBtn.innerHTML = '↻';
-    rotateRightBtn.title = 'Girar à direita';
-    rotateRightBtn.onclick = () => rotateMap(15);
-    
-    // Botão rotacionar anti-horário  
-    const rotateLeftBtn = document.createElement('div');
-    rotateLeftBtn.className = 'rotation-btn';
-    rotateLeftBtn.innerHTML = '↺';
-    rotateLeftBtn.title = 'Girar à esquerda';
-    rotateLeftBtn.onclick = () => rotateMap(-15);
-    
-    // Botão resetar rotação
-    const resetBtn = document.createElement('div');
-    resetBtn.className = 'rotation-btn';
-    resetBtn.innerHTML = '⊕';
-    resetBtn.title = 'Resetar rotação';
-    resetBtn.onclick = () => resetMapRotation();
-    
-    controlsDiv.appendChild(rotateRightBtn);
-    controlsDiv.appendChild(rotateLeftBtn);
-    controlsDiv.appendChild(resetBtn);
-    
-    mapContainer.appendChild(controlsDiv);
-}
-
-// Rotacionar mapa - versão simplificada
-function rotateMap(degrees) {
-    mapRotation += degrees;
-    applyRotation();
-}
-
-// Resetar rotação - versão simplificada
-function resetMapRotation() {
-    mapRotation = 0;
-    isRotating = false;
-    applyRotation();
-}
-
-// Aplicar rotação - versão simplificada
-function applyRotation() {
-    const mapPane = deliveryMap.getPane('mapPane');
-    if (mapPane) {
-        // Aplicar rotação apenas no conteúdo interno do mapa
-        mapPane.style.transform = `rotate(${mapRotation}deg)`;
-        mapPane.style.transformOrigin = 'center center';
-    }
-    
-    console.log(`🔄 Mapa rotacionado: ${mapRotation}°`);
-}
-
-// Versão simplificada da rotação por touch que FUNCIONA
-function addSimpleTouchRotation() {
-    const mapContainer = deliveryMap.getContainer();
-    let initialAngle = 0;
-    let isRotatingNow = false;
-    
-    mapContainer.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 2) {
-            // Capturar ângulo inicial
-            initialAngle = getTouchAngle(e.touches[0], e.touches[1]);
-            isRotatingNow = false; // Resetar flag
-        }
-    }, { passive: true });
-    
-    mapContainer.addEventListener('touchmove', (e) => {
-        if (e.touches.length === 2) {
-            const currentAngle = getTouchAngle(e.touches[0], e.touches[1]);
-            const angleDiff = currentAngle - initialAngle;
+        function addRotationControls() {
+            const mapContainer = document.getElementById('deliveryMap');
             
-            // Se movimento angular significativo, é rotação
-            if (Math.abs(angleDiff) > 10) {
-                isRotatingNow = true;
-                isRotating = true;
-                
-                // Aplicar rotação suave
-                mapRotation += angleDiff * 0.5;
-                applyRotation();
-                
-                initialAngle = currentAngle;
-                
-                // Prevenir zoom apenas se for rotação confirmada
-                e.preventDefault();
-            }
-            // Se movimento pequeno, deixar ser zoom natural
+            const controlsDiv = document.createElement('div');
+            controlsDiv.className = 'rotation-controls';
+            
+            // Botão rotacionar horário
+            const rotateRightBtn = document.createElement('div');
+            rotateRightBtn.className = 'rotation-btn';
+            rotateRightBtn.innerHTML = '↻';
+            rotateRightBtn.title = 'Girar à direita';
+            rotateRightBtn.onclick = () => rotateMap(15);
+            
+            // Botão rotacionar anti-horário  
+            const rotateLeftBtn = document.createElement('div');
+            rotateLeftBtn.className = 'rotation-btn';
+            rotateLeftBtn.innerHTML = '↺';
+            rotateLeftBtn.title = 'Girar à esquerda';
+            rotateLeftBtn.onclick = () => rotateMap(-15);
+            
+            // Botão resetar rotação
+            const resetBtn = document.createElement('div');
+            resetBtn.className = 'rotation-btn';
+            resetBtn.innerHTML = '⊕';
+            resetBtn.title = 'Resetar rotação';
+            resetBtn.onclick = () => resetMapRotation();
+            
+            controlsDiv.appendChild(rotateRightBtn);
+            controlsDiv.appendChild(rotateLeftBtn);
+            controlsDiv.appendChild(resetBtn);
+            
+            mapContainer.appendChild(controlsDiv);
         }
-    }, { passive: false });
-    
-    mapContainer.addEventListener('touchend', (e) => {
-        if (e.touches.length < 2) {
-            isRotatingNow = false;
-            isRotating = false;
-        }
-    }, { passive: true });
-}
 
-// Função getTouchAngle simplificada
-function getTouchAngle(touch1, touch2) {
-    const dx = touch2.clientX - touch1.clientX;
-    const dy = touch2.clientY - touch1.clientY;
-    return Math.atan2(dy, dx) * (180 / Math.PI);
-}
+        // Rotacionar mapa - versão simplificada
+        function rotateMap(degrees) {
+            mapRotation += degrees;
+            applyRotation();
+        }
+
+        // Resetar rotação - versão simplificada
+        function resetMapRotation() {
+            mapRotation = 0;
+            isRotating = false;
+            applyRotation();
+        }
+
+        // Aplicar rotação - versão simplificada
+        function applyRotation() {
+            const mapPane = deliveryMap.getPane('mapPane');
+            if (mapPane) {
+                // Aplicar rotação apenas no conteúdo interno do mapa
+                mapPane.style.transform = `rotate(${mapRotation}deg)`;
+                mapPane.style.transformOrigin = 'center center';
+            }
+            
+            console.log(`🔄 Mapa rotacionado: ${mapRotation}°`);
+        }
+
+        // Versão simplificada da rotação por touch que FUNCIONA
+        function addSimpleTouchRotation() {
+            const mapContainer = deliveryMap.getContainer();
+            let initialAngle = 0;
+            let isRotatingNow = false;
+            
+            mapContainer.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    // Capturar ângulo inicial
+                    initialAngle = getTouchAngle(e.touches[0], e.touches[1]);
+                    isRotatingNow = false; // Resetar flag
+                }
+            }, { passive: true });
+            
+            mapContainer.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                    const currentAngle = getTouchAngle(e.touches[0], e.touches[1]);
+                    const angleDiff = currentAngle - initialAngle;
+                    
+                    // Se movimento angular significativo, é rotação
+                    if (Math.abs(angleDiff) > 10) {
+                        isRotatingNow = true;
+                        isRotating = true;
+                        
+                        // Aplicar rotação suave
+                        mapRotation += angleDiff * 0.5;
+                        applyRotation();
+                        
+                        initialAngle = currentAngle;
+                        
+                        // Prevenir zoom apenas se for rotação confirmada
+                        e.preventDefault();
+                    }
+                    // Se movimento pequeno, deixar ser zoom natural
+                }
+            }, { passive: false });
+            
+            mapContainer.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) {
+                    isRotatingNow = false;
+                    isRotating = false;
+                }
+            }, { passive: true });
+        }
+
+        // Função getTouchAngle simplificada
+        function getTouchAngle(touch1, touch2) {
+            const dx = touch2.clientX - touch1.clientX;
+            const dy = touch2.clientY - touch1.clientY;
+            return Math.atan2(dy, dx) * (180 / Math.PI);
+        }
 
         // Variáveis para localização do usuário
-let userLocationMarker = null;
-let watchId = null;
+        let userLocationMarker = null;
+        let watchId = null;
 
-// Inicializar localização do usuário - versão simplificada
-function initializeUserLocation() {
-    if (!navigator.geolocation) {
-        console.log('⚠️ Geolocalização não suportada pelo navegador');
-        return;
-    }
+        // Inicializar localização do usuário - versão simplificada
+        function initializeUserLocation() {
+            if (!navigator.geolocation) {
+                console.log('⚠️ Geolocalização não suportada pelo navegador');
+                return;
+            }
 
-    console.log('📍 Iniciando rastreamento de localização...');
+            console.log('📍 Iniciando rastreamento de localização...');
 
-    // Opções básicas para localização
-    const options = {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 10000
-    };
+            // Opções básicas para localização
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 10000
+            };
 
-    // Obter localização inicial
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            console.log('📍 Localização inicial obtida');
-            updateUserLocation(position);
-        },
-        (error) => {
-            console.warn('⚠️ Erro ao obter localização:', error.message);
-        },
-        options
-    );
+            // Obter localização inicial
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    console.log('📍 Localização inicial obtida');
+                    updateUserLocation(position);
+                },
+                (error) => {
+                    console.warn('⚠️ Erro ao obter localização:', error.message);
+                },
+                options
+            );
 
-    // Rastrear localização continuamente
-    watchId = navigator.geolocation.watchPosition(
-        (position) => {
-            updateUserLocation(position);
-        },
-        (error) => {
-            console.warn('⚠️ Erro no rastreamento:', error.message);
-        },
-        options
-    );
-}
+            // Rastrear localização continuamente
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    updateUserLocation(position);
+                },
+                (error) => {
+                    console.warn('⚠️ Erro no rastreamento:', error.message);
+                },
+                options
+            );
+        }
 
-// Atualizar marcador de localização do usuário - versão simplificada
-function updateUserLocation(position) {
-    if (!deliveryMap) return;
+        // Atualizar marcador de localização do usuário - versão simplificada
+        function updateUserLocation(position) {
+            if (!deliveryMap) return;
 
-    const lat = position.coords.latitude;
-    const lng = position.coords.longitude;
-    const accuracy = position.coords.accuracy;
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
 
-    console.log(`📍 Localização atualizada: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${Math.round(accuracy)}m)`);
+            console.log(`📍 Localização atualizada: ${lat.toFixed(6)}, ${lng.toFixed(6)} (±${Math.round(accuracy)}m)`);
 
-    // Remover marcador anterior se existir
-    if (userLocationMarker) {
-        deliveryMap.removeLayer(userLocationMarker);
-    }
+            // Remover marcador anterior se existir
+            if (userLocationMarker) {
+                deliveryMap.removeLayer(userLocationMarker);
+            }
 
-    // Criar novo marcador de localização
-    const locationIcon = L.divIcon({
-        html: '<div class="user-location-marker"></div>',
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
-        className: 'user-location-icon'
-    });
+            // Criar novo marcador de localização
+            const locationIcon = L.divIcon({
+                html: '<div class="user-location-marker"></div>',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10],
+                className: 'user-location-icon'
+            });
 
-    // Adicionar marcador no mapa
-    userLocationMarker = L.marker([lat, lng], { 
-        icon: locationIcon,
-        zIndexOffset: 1000 // Ficar acima dos outros marcadores
-    })
-    .bindPopup(`
-        <div style="text-align: center;">
-            <div style="font-weight: 600; color: #3b82f6; margin-bottom: 0.5rem;">
-                📍 Sua Localização
-            </div>
-            <div style="font-size: 0.875rem; color: #64748b;">
-                Precisão: ±${Math.round(accuracy)}m
-            </div>
-        </div>
-    `)
-    .addTo(deliveryMap);
+            // Adicionar marcador no mapa
+            userLocationMarker = L.marker([lat, lng], { 
+                icon: locationIcon,
+                zIndexOffset: 1000 // Ficar acima dos outros marcadores
+            })
+            .bindPopup(`
+                <div style="text-align: center;">
+                    <div style="font-weight: 600; color: #3b82f6; margin-bottom: 0.5rem;">
+                        📍 Sua Localização
+                    </div>
+                    <div style="font-size: 0.875rem; color: #64748b;">
+                        Precisão: ±${Math.round(accuracy)}m
+                    </div>
+                </div>
+            `)
+            .addTo(deliveryMap);
 
-    console.log('✅ Marcador de localização atualizado');
+            console.log('✅ Marcador de localização atualizado');
 
-    // Enviar localização para Firebase
-    saveLocationToFirebase(position);
-}
+            // Enviar localização para Firebase
+            saveLocationToFirebase(position);
+        }
 
-// Enviar localização para Firebase
-async function saveLocationToFirebase(position) {
-    if (!userDeliveryId || !currentUser) return;
+        // Enviar localização para Firebase
+        async function saveLocationToFirebase(position) {
+            if (!userDeliveryId || !currentUser) return;
 
-    try {
-        // Importar funções do Firebase
-        const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-        
-        const locationData = {
-            deliveryId: userDeliveryId,
-            deliveryName: currentUser.email.split('@')[0], // Nome baseado no email
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            heading: position.coords.heading || null,
-            speed: position.coords.speed || null,
-            timestamp: new Date().toISOString(),
-            updatedAt: serverTimestamp(),
-            isActive: true
-        };
-        
-        // Salvar na coleção deliveryLocations
-        const docRef = doc(window.firebaseDb, 'deliveryLocations', userDeliveryId);
-        await setDoc(docRef, locationData);
-        
-        console.log('📍 Localização enviada para Firebase');
-        
-    } catch (error) {
-        console.error('❌ Erro ao salvar localização:', error);
-    }
-}
+            try {
+                // Importar funções do Firebase
+                const { doc, setDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                
+                const locationData = {
+                    deliveryId: userDeliveryId,
+                    deliveryName: currentUser.email.split('@')[0], // Nome baseado no email
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy,
+                    heading: position.coords.heading || null,
+                    speed: position.coords.speed || null,
+                    timestamp: new Date().toISOString(),
+                    updatedAt: serverTimestamp(),
+                    isActive: true
+                };
+                
+                // Salvar na coleção deliveryLocations
+                const docRef = doc(window.firebaseDb, 'deliveryLocations', userDeliveryId);
+                await setDoc(docRef, locationData);
+                
+                console.log('📍 Localização enviada para Firebase');
+                
+            } catch (error) {
+                console.error('❌ Erro ao salvar localização:', error);
+            }
+        }
 
-// Parar rastreamento de localização - versão simplificada
-function stopLocationTracking() {
-    if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-        console.log('🛑 Rastreamento de localização parado');
-    }
+        // Parar rastreamento de localização - versão simplificada
+        function stopLocationTracking() {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+                console.log('🛑 Rastreamento de localização parado');
+            }
 
-    if (userLocationMarker && deliveryMap) {
-        deliveryMap.removeLayer(userLocationMarker);
-        userLocationMarker = null;
-        console.log('🗑️ Marcador de localização removido');
-    }
-}
+            if (userLocationMarker && deliveryMap) {
+                deliveryMap.removeLayer(userLocationMarker);
+                userLocationMarker = null;
+                console.log('🗑️ Marcador de localização removido');
+            }
+        }
 
         // Carregar pedidos no mapa - versão simplificada
         function loadMapOrders() {
@@ -2044,120 +2260,120 @@ function stopLocationTracking() {
 
         // ============ NOTIFICAÇÕES SONORAS ============
 
-// Variáveis para áudio
-let audioContext = null;
-let userHasInteracted = false;
+        // Variáveis para áudio
+        let audioContext = null;
+        let userHasInteracted = false;
 
-// Inicializar sistema de áudio
-function initializeAudio() {
-    // Detectar primeira interação do usuário
-    document.addEventListener('click', enableAudio, { once: true });
-    document.addEventListener('touchstart', enableAudio, { once: true });
-}
+        // Inicializar sistema de áudio
+        function initializeAudio() {
+            // Detectar primeira interação do usuário
+            document.addEventListener('click', enableAudio, { once: true });
+            document.addEventListener('touchstart', enableAudio, { once: true });
+        }
 
-// Habilitar áudio após interação do usuário
-function enableAudio() {
-    userHasInteracted = true;
-    
-    try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        console.log('🔊 Sistema de áudio inicializado');
-    } catch (error) {
-        console.warn('⚠️ Erro ao inicializar áudio:', error);
-    }
-}
-
-// Tocar som de notificação
-function playNotificationSound() {
-    if (!audioContext || !userHasInteracted) {
-        console.log('⚠️ Áudio não disponível ainda - usuário precisa interagir primeiro');
-        return;
-    }
-
-    try {
-        // Gerar som de sino programaticamente
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        // Conectar nós
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        // Configurar som de sino (duas frequências)
-        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-        oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
-        
-        // Configurar volume (envelope)
-        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-        
-        // Tocar som
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.5);
-        
-        console.log('🔔 Som de notificação tocado');
-        
-        // Mostrar toast visual
-        showSoundToast('🔔 Novo pedido recebido!');
-        
-    } catch (error) {
-        console.error('❌ Erro ao tocar som:', error);
-    }
-}
-
-// Mostrar toast de notificação
-function showSoundToast(message) {
-    // Remover toast anterior se existir
-    const existingToast = document.querySelector('.sound-toast');
-    if (existingToast) {
-        existingToast.remove();
-    }
-    
-    // Criar novo toast
-    const toast = document.createElement('div');
-    toast.className = 'sound-toast';
-    toast.textContent = message;
-    
-    document.body.appendChild(toast);
-    
-    // Mostrar toast
-    setTimeout(() => {
-        toast.classList.add('show');
-    }, 10);
-    
-    // Esconder após 3 segundos
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.remove();
+        // Habilitar áudio após interação do usuário
+        function enableAudio() {
+            userHasInteracted = true;
+            
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('🔊 Sistema de áudio inicializado');
+            } catch (error) {
+                console.warn('⚠️ Erro ao inicializar áudio:', error);
             }
-        }, 300);
-    }, 3000);
-}
+        }
 
-// Tentar tocar som com vibração de fallback
-function notifyNewOrder() {
-    // Som principal
-    playNotificationSound();
-    
-    // Vibração como backup (se suportado)
-    if (navigator.vibrate) {
-        navigator.vibrate([200, 100, 200]); // Padrão: vibra-pausa-vibra
-        console.log('📳 Vibração ativada');
-    }
-    
-    // Tentar notificação do browser (se permitido)
-    if (Notification.permission === 'granted') {
-        new Notification('🔔 Novo Pedido', {
-            body: 'Você recebeu um novo pedido para entrega!',
-            icon: '🏍️',
-            tag: 'new-order'
-        });
-    }
-}
+        // Tocar som de notificação
+        function playNotificationSound() {
+            if (!audioContext || !userHasInteracted) {
+                console.log('⚠️ Áudio não disponível ainda - usuário precisa interagir primeiro');
+                return;
+            }
+
+            try {
+                // Gerar som de sino programaticamente
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                // Conectar nós
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Configurar som de sino (duas frequências)
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+                
+                // Configurar volume (envelope)
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                // Tocar som
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+                
+                console.log('🔔 Som de notificação tocado');
+                
+                // Mostrar toast visual
+                showSoundToast('🔔 Novo pedido recebido!');
+                
+            } catch (error) {
+                console.error('❌ Erro ao tocar som:', error);
+            }
+        }
+
+        // Mostrar toast de notificação
+        function showSoundToast(message) {
+            // Remover toast anterior se existir
+            const existingToast = document.querySelector('.sound-toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+            
+            // Criar novo toast
+            const toast = document.createElement('div');
+            toast.className = 'sound-toast';
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+            
+            // Mostrar toast
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+            
+            // Esconder após 3 segundos
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.remove();
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // Tentar tocar som com vibração de fallback
+        function notifyNewOrder() {
+            // Som principal
+            playNotificationSound();
+            
+            // Vibração como backup (se suportado)
+            if (navigator.vibrate) {
+                navigator.vibrate([200, 100, 200]); // Padrão: vibra-pausa-vibra
+                console.log('📳 Vibração ativada');
+            }
+            
+            // Tentar notificação do browser (se permitido)
+            if (Notification.permission === 'granted') {
+                new Notification('🔔 Novo Pedido', {
+                    body: 'Você recebeu um novo pedido para entrega!',
+                    icon: '🏍️',
+                    tag: 'new-order'
+                });
+            }
+        }
 
         // ============ FIM FUNCIONALIDADES DO MAPA ============
 
@@ -2178,7 +2394,7 @@ function notifyNewOrder() {
             document.getElementById('reportResult').style.display = 'none';
         }
 
- // Gerar relatório
+        // Gerar relatório
         function generateReport() {
             const selectedDate = document.getElementById('reportDate').value;
             
@@ -2288,11 +2504,19 @@ function notifyNewOrder() {
             const customerName = order.customer?.name || 'Cliente';
             const total = formatCurrency(order.total?.orderAmount || 0);
             
-            // Endereço
+            // ✅ ENDEREÇO COM COMPLEMENTO
             const address = order.delivery?.deliveryAddress;
-            const addressText = address ? 
-                `${address.streetName || ''} ${address.streetNumber || ''}, ${address.neighborhood || ''}`.trim() : 
-                'Retirada no local';
+            let addressText = 'Retirada no local';
+            
+            if (address) {
+                // Endereço principal
+                addressText = `${address.streetName || ''} ${address.streetNumber || ''}, ${address.neighborhood || ''}`.trim();
+                
+                // ✅ ADICIONAR COMPLEMENTO SE EXISTIR
+                if (address.complement && address.complement.trim()) {
+                    addressText += ` - ${address.complement.trim()}`;
+                }
+            }
 
             // Forma de pagamento
             const mainPayment = order.payments?.methods?.[0];
@@ -2304,6 +2528,21 @@ function notifyNewOrder() {
                 mainPayment: mainPayment,
                 paymentText: paymentText
             });
+
+            // ✅ ITENS DO PEDIDO - DADOS REAIS DA API
+            let itemsText = 'Não informado';
+            if (order.items && order.items.length > 0) {
+                // Pegar os 3 primeiros itens para não sobrecarregar o card
+                const displayItems = order.items.slice(0, 3);
+                itemsText = displayItems.map(item => {
+                    return `${item.quantity}x ${item.name}`;
+                }).join(', ');
+                
+                // Se tem mais itens, mostrar indicador
+                if (order.items.length > 3) {
+                    itemsText += ` e mais ${order.items.length - 3} item(s)`;
+                }
+            }
 
             // Observações dos itens
             let observations = [];
@@ -2362,6 +2601,11 @@ function notifyNewOrder() {
                         <div class="order-info">
                             <div class="info-label">Endereço</div>
                             <div class="info-value">${addressText}</div>
+                        </div>
+                        
+                        <div class="order-info">
+                            <div class="info-label">Itens</div>
+                            <div class="info-value" style="font-size: 0.8rem; line-height: 1.3;">${itemsText}</div>
                         </div>
                         
                         <div class="order-info">
@@ -2778,589 +3022,8 @@ function notifyNewOrder() {
         window.closeReportsModal = closeReportsModal;
         window.generateReport = generateReport;
         window.logout = logout;
+        window.installApp = installApp;
+        window.updateApp = updateApp;
     </script>
-
-    <!-- ====================================== -->
-<!-- SCRIPT PARA ADICIONAR COMPLEMENTO E ITENS NOS CARDS DO MOTOBOY -->
-<!-- ====================================== -->
-<!-- Adicione este código no final do motoboy.html, antes do fechamento do </body> -->
-
-<script>
-// ====================================
-// MOTOBOY CARD ENHANCEMENT v1.0
-// ====================================
-console.log('🔧 Carregando Motoboy Card Enhancement...');
-
-// Aguardar o DOM estar carregado
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔧 DOM carregado, inicializando Card Enhancement...');
-    
-    // Aguardar um pouco para garantir que as funções estão disponíveis
-    setTimeout(() => {
-        setupCardEnhancement();
-    }, 2000);
-});
-
-function setupCardEnhancement() {
-    console.log('🔧 Configurando Card Enhancement...');
-    
-    // Verificar se a função createOrderCard existe
-    if (typeof window.createOrderCard === 'function') {
-        console.log('✅ Função createOrderCard encontrada, substituindo...');
-        
-        // Salvar referência da função original
-        window.originalCreateOrderCard = window.createOrderCard;
-        
-        // Substituir pela versão aprimorada
-        window.createOrderCard = function(assignment) {
-            const order = assignment.order;
-            const createdAt = new Date(order.createdAt);
-            const timeString = createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            const dateString = createdAt.toLocaleDateString('pt-BR');
-
-            const customerName = order.customer?.name || 'Cliente';
-            const total = formatCurrency(order.total?.orderAmount || 0);
-            
-            // ✅ ENDEREÇO COM COMPLEMENTO
-            const address = order.delivery?.deliveryAddress;
-            let addressText = 'Retirada no local';
-            
-            if (address) {
-                // Endereço principal
-                addressText = `${address.streetName || ''} ${address.streetNumber || ''}, ${address.neighborhood || ''}`.trim();
-                
-                // ✅ ADICIONAR COMPLEMENTO SE EXISTIR
-                if (address.complement && address.complement.trim()) {
-                    addressText += ` - ${address.complement.trim()}`;
-                }
-            }
-
-            // Forma de pagamento
-            const mainPayment = order.payments?.methods?.[0];
-            const paymentText = mainPayment ? getPaymentMethodLabel(mainPayment) : 'N/A';
-
-            // ✅ ITENS DO PEDIDO - DADOS REAIS DA API
-            let itemsText = 'Não informado';
-            if (order.items && order.items.length > 0) {
-                // Pegar os 3 primeiros itens para não sobrecarregar o card
-                const displayItems = order.items.slice(0, 3);
-                itemsText = displayItems.map(item => {
-                    return `${item.quantity}x ${item.name}`;
-                }).join(', ');
-                
-                // Se tem mais itens, mostrar indicador
-                if (order.items.length > 3) {
-                    itemsText += ` e mais ${order.items.length - 3} item(s)`;
-                }
-            }
-
-            // Observações dos itens
-            let observations = [];
-            if (order.items && order.items.length > 0) {
-                order.items.forEach(item => {
-                    if (item.observations && item.observations.trim()) {
-                        observations.push(`${item.name}: ${item.observations}`);
-                    }
-                });
-            }
-
-            // Status e botões baseados no status da atribuição
-            let statusText = '';
-            let actionButtons = '';
-            
-            if (assignment.status === 'sent') {
-                statusText = '📨 Pedido Enviado';
-                actionButtons = `
-                    <button class="btn btn-accept" onclick="acceptOrder('${assignment.id}')">
-                        ✅ Aceitar Pedido
-                    </button>
-                `;
-            } else if (assignment.status === 'accepted') {
-                statusText = '✅ Pedido Aceito';
-                actionButtons = `
-                    <button class="btn btn-dispatch" onclick="dispatchOrder('${assignment.id}')">
-                        🚀 Despachar Pedido
-                    </button>
-                `;
-            } else if (assignment.status === 'dispatched') {
-                statusText = '🚀 Pedido Despachado';
-                actionButtons = `
-                    <button class="btn" style="background: #f59e0b; color: white;" onclick="confirmDeliveryCode('${assignment.id}')">
-                        🔢 Confirmar Código
-                    </button>
-                    <button class="btn" style="background: #6b7280; color: white; margin-top: 0.5rem;" onclick="finishWithoutCode('${assignment.id}')">
-                        ✅ Finalizar Sem Código
-                    </button>
-                `;
-            }
-
-            return `
-                <div class="order-card" onclick="openOrderModal('${assignment.id}')">
-                    <div class="order-card-header">
-                        <div class="order-id">#${order.displayId}</div>
-                        <div class="order-time">${timeString} • ${dateString}</div>
-                        <div style="margin-top: 0.5rem; font-size: 0.875rem; opacity: 0.9;">${statusText}</div>
-                    </div>
-                    
-                    <div class="order-card-body">
-                        <div class="order-info">
-                            <div class="info-label">Cliente</div>
-                            <div class="info-value">${customerName}</div>
-                        </div>
-                        
-                        <div class="order-info">
-                            <div class="info-label">Endereço</div>
-                            <div class="info-value">${addressText}</div>
-                        </div>
-                        
-                        <div class="order-info">
-                            <div class="info-label">Itens</div>
-                            <div class="info-value" style="font-size: 0.8rem; line-height: 1.3;">${itemsText}</div>
-                        </div>
-                        
-                        <div class="order-info">
-                            <div class="info-label">Pagamento</div>
-                            <div class="info-value">${paymentText}</div>
-                        </div>
-                        
-                        ${observations.length > 0 ? `
-                        <div class="order-info">
-                            <div class="info-label">Observações</div>
-                            <div class="info-value observations-text">${observations.join('; ')}</div>
-                        </div>
-                        ` : ''}
-                        
-                        <div class="order-total">
-                            <div class="total-value">${total}</div>
-                        </div>
-                        
-                        <div class="order-actions" onclick="event.stopPropagation()">
-                            ${actionButtons}
-                        </div>
-                    </div>
-                </div>
-            `;
-        };
-        
-        console.log('✅ Função createOrderCard substituída com sucesso!');
-        
-    } else {
-        console.warn('⚠️ Função createOrderCard não encontrada');
-    }
-}
-
-console.log('✅ Motoboy Card Enhancement v1.0 carregado!');
-</script>
-
-<!-- Estilos adicionais para melhorar a visualização -->
-<style>
-/* Estilos para melhorar a visualização dos itens */
-.order-card .order-info .info-value {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-}
-
-/* Estilo específico para os itens */
-.order-card .order-info:has(.info-label:contains("Itens")) .info-value {
-    font-size: 0.8rem;
-    line-height: 1.3;
-    color: #4b5563;
-}
-
-/* Melhorar quebra de linha para endereços longos */
-.order-card .order-info:has(.info-label:contains("Endereço")) .info-value {
-    font-size: 0.8rem;
-    line-height: 1.3;
-}
-</style>
-
-<!-- FIM DO SCRIPT - Adicione antes do fechamento do </body> -->
-
-<!-- ====================================== -->
-<!-- SCRIPT PARA CORRIGIR TEMPO REAL DOS PEDIDOS - MOTOBOY -->
-<!-- ====================================== -->
-<!-- Adicione este código no final do motoboy.html, DEPOIS do script anterior -->
-
-<script>
-// ====================================
-// REALTIME FIX v1.0 - MOTOBOY
-// ====================================
-console.log('🔧 Carregando Realtime Fix para Motoboy...');
-
-// Variáveis para controle de tempo real melhorado
-let realtimeDebugMode = true; // Para logs detalhados
-let lastUpdateTime = 0;
-let heartbeatInterval = null;
-let reconnectAttempts = 0;
-let maxReconnectAttempts = 5;
-
-// Aguardar o sistema carregar completamente
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔧 DOM carregado, aguardando Firebase...');
-    
-    setTimeout(() => {
-        setupRealtimeFix();
-    }, 3000); // Aguardar mais tempo para garantir que tudo carregou
-});
-
-function setupRealtimeFix() {
-    console.log('🔧 Configurando Realtime Fix...');
-    
-    // Verificar se as variáveis necessárias existem
-    if (typeof userDeliveryId === 'undefined' || !userDeliveryId) {
-        console.warn('⚠️ userDeliveryId não disponível ainda, tentando novamente...');
-        setTimeout(setupRealtimeFix, 2000);
-        return;
-    }
-    
-    console.log(`🔧 Configurando para entregador: ${userDeliveryId}`);
-    
-    // Substituir a função setupRealTimeListeners existente
-    if (typeof window.setupRealTimeListeners === 'function') {
-        console.log('🔄 Substituindo setupRealTimeListeners...');
-        
-        // Limpar listener existente se houver
-        if (typeof unsubscribeAssignments !== 'undefined' && unsubscribeAssignments) {
-            console.log('🔄 Limpando listener existente...');
-            unsubscribeAssignments();
-        }
-        
-        // Configurar novo listener aprimorado
-        setupEnhancedRealTimeListener();
-        
-        // Iniciar heartbeat para monitorar conexão
-        startConnectionHeartbeat();
-        
-    } else {
-        console.warn('⚠️ setupRealTimeListeners não encontrada, tentando novamente...');
-        setTimeout(setupRealtimeFix, 2000);
-    }
-}
-
-function setupEnhancedRealTimeListener() {
-    console.log('🔥 Configurando listener aprimorado em tempo real...');
-    
-    const assignmentsRef = window.collection(window.firebaseDb, 'deliveryAssignments');
-    
-    unsubscribeAssignments = window.onSnapshot(assignmentsRef, 
-        (snapshot) => {
-            const currentTime = Date.now();
-            const timestamp = new Date().toLocaleTimeString();
-            
-            if (realtimeDebugMode) {
-                console.log(`🔥 [${timestamp}] Snapshot recebido - Documentos: ${snapshot.size}`);
-                console.log(`🔥 [${timestamp}] Tipo de mudança: ${snapshot.docChanges().length} alterações`);
-            }
-            
-            let hasMyOrders = false;
-            let newAssignments = new Map();
-            let changesForMe = [];
-            
-            // Processar mudanças documento por documento
-            snapshot.docChanges().forEach((change) => {
-                const data = change.doc.data();
-                const docId = change.doc.id;
-                
-                if (realtimeDebugMode) {
-                    console.log(`📋 [${timestamp}] Mudança: ${change.type} - Doc: ${docId}`);
-                    console.log(`📋 [${timestamp}] DeliveryId: "${data.deliveryId}" vs "${userDeliveryId}"`);
-                }
-                
-                // Verificar se é para este entregador
-                if (data.deliveryId === userDeliveryId) {
-                    hasMyOrders = true;
-                    changesForMe.push({
-                        type: change.type,
-                        docId: docId,
-                        data: data,
-                        orderDisplayId: data.order?.displayId || 'N/A'
-                    });
-                    
-                    if (realtimeDebugMode) {
-                        console.log(`✅ [${timestamp}] MATCH! Pedido ${data.order?.displayId} - Status: ${data.status} - Tipo: ${change.type}`);
-                    }
-                }
-            });
-            
-            // Processar TODOS os documentos para ter o estado completo
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                if (data.deliveryId === userDeliveryId) {
-                    newAssignments.set(doc.id, {
-                        id: doc.id,
-                        ...data
-                    });
-                }
-            });
-            
-            if (realtimeDebugMode && changesForMe.length > 0) {
-                console.log(`🎯 [${timestamp}] Mudanças para ${userDeliveryId}:`, changesForMe);
-                console.log(`📊 [${timestamp}] Total assignments: ${newAssignments.size}`);
-            }
-            
-            // Detectar novos pedidos
-            const previousActiveCount = Array.from(assignments.values()).filter(a => 
-                a.status === 'sent' || a.status === 'accepted' || a.status === 'dispatched'
-            ).length;
-            
-            // Atualizar assignments IMEDIATAMENTE
-            assignments.clear();
-            newAssignments.forEach((value, key) => {
-                assignments.set(key, value);
-            });
-            
-            const currentActiveCount = Array.from(assignments.values()).filter(a => 
-                a.status === 'sent' || a.status === 'accepted' || a.status === 'dispatched'
-            ).length;
-            
-            // Verificar se há novos pedidos ativos
-            if (currentActiveCount > previousActiveCount) {
-                const newOrdersCount = currentActiveCount - previousActiveCount;
-                console.log(`🔔 [${timestamp}] ${newOrdersCount} NOVO(S) PEDIDO(S) para ${userDeliveryId}!`);
-                
-                // Tocar som imediatamente
-                if (typeof notifyNewOrder === 'function') {
-                    notifyNewOrder();
-                }
-                
-                // Mostrar notificação específica
-                showInstantToast(`🔔 ${newOrdersCount} novo(s) pedido(s) recebido(s)!`, 'success');
-            }
-            
-            // Atualizar UI IMEDIATAMENTE - SEM DEBOUNCE!
-            console.log(`🎨 [${timestamp}] Atualizando UI imediatamente...`);
-            updateUIInstantly();
-            
-            lastUpdateTime = currentTime;
-            
-        },
-        (error) => {
-            console.error(`❌ [${new Date().toLocaleTimeString()}] Erro no listener:`, error);
-            handleConnectionError();
-        }
-    );
-    
-    console.log('✅ Listener aprimorado configurado com sucesso!');
-}
-
-function updateUIInstantly() {
-    try {
-        // Atualizar lista de pedidos imediatamente
-        if (typeof renderOrders === 'function') {
-            renderOrders();
-        }
-        
-        // Atualizar mapa se estiver ativo
-        if (currentTab === 'mapa' && deliveryMap && typeof loadMapOrders === 'function') {
-            loadMapOrders();
-        }
-        
-        console.log('✅ UI atualizada instantaneamente');
-        
-    } catch (error) {
-        console.error('❌ Erro ao atualizar UI:', error);
-    }
-}
-
-function startConnectionHeartbeat() {
-    console.log('💓 Iniciando heartbeat de conexão...');
-    
-    // Verificar conexão a cada 10 segundos
-    heartbeatInterval = setInterval(() => {
-        const now = Date.now();
-        const timeSinceLastUpdate = now - lastUpdateTime;
-        
-        // Se não recebeu atualizações há mais de 60 segundos, reconectar
-        if (timeSinceLastUpdate > 60000) {
-            console.warn(`⚠️ Sem atualizações há ${Math.round(timeSinceLastUpdate/1000)}s, reconectando...`);
-            handleConnectionError();
-        }
-        
-    }, 10000);
-}
-
-function handleConnectionError() {
-    reconnectAttempts++;
-    
-    if (reconnectAttempts <= maxReconnectAttempts) {
-        console.log(`🔄 Tentativa de reconexão ${reconnectAttempts}/${maxReconnectAttempts}...`);
-        
-        // Limpar listener existente
-        if (unsubscribeAssignments) {
-            unsubscribeAssignments();
-        }
-        
-        // Tentar reconectar após delay
-        setTimeout(() => {
-            setupEnhancedRealTimeListener();
-        }, 2000 * reconnectAttempts); // Delay progressivo
-        
-        showInstantToast(`🔄 Reconectando... (${reconnectAttempts}/${maxReconnectAttempts})`, 'info');
-        
-    } else {
-        console.error('❌ Máximo de tentativas de reconexão atingido');
-        showInstantToast('❌ Problema de conexão. Recarregue a página.', 'error');
-    }
-}
-
-function showInstantToast(message, type = 'success') {
-    // Criar toast específico para atualizações em tempo real
-    const existingToast = document.querySelector('.realtime-toast');
-    if (existingToast) {
-        existingToast.remove();
-    }
-    
-    const toast = document.createElement('div');
-    toast.className = `realtime-toast toast ${type} show`;
-    toast.textContent = message;
-    toast.style.cssText = `
-        position: fixed;
-        top: 70px;
-        right: 2rem;
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 1rem 1.5rem;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-        z-index: 2001;
-        opacity: 1;
-        transform: translateX(0);
-        transition: all 0.3s ease;
-        max-width: 400px;
-        border-left: 4px solid ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
-    `;
-    
-    document.body.appendChild(toast);
-    
-    // Remover após 4 segundos
-    setTimeout(() => {
-        if (toast.parentNode) {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.remove();
-                }
-            }, 300);
-        }
-    }, 4000);
-}
-
-// Melhorar a função renderOrders para ser mais responsiva
-function enhanceRenderOrders() {
-    if (typeof window.renderOrders === 'function') {
-        const originalRenderOrders = window.renderOrders;
-        
-        window.renderOrders = function() {
-            const startTime = performance.now();
-            
-            try {
-                originalRenderOrders();
-                
-                const endTime = performance.now();
-                if (realtimeDebugMode) {
-                    console.log(`🎨 renderOrders executado em ${Math.round(endTime - startTime)}ms`);
-                }
-                
-            } catch (error) {
-                console.error('❌ Erro em renderOrders:', error);
-            }
-        };
-    }
-}
-
-// Adicionar indicador visual de conexão em tempo real
-function addConnectionIndicator() {
-    const indicator = document.createElement('div');
-    indicator.id = 'connectionIndicator';
-    indicator.style.cssText = `
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        width: 12px;
-        height: 12px;
-        background: #10b981;
-        border-radius: 50%;
-        z-index: 3000;
-        box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
-        animation: pulse 2s infinite;
-    `;
-    
-    document.body.appendChild(indicator);
-    
-    // Atualizar cor baseado no status
-    setInterval(() => {
-        const timeSinceLastUpdate = Date.now() - lastUpdateTime;
-        if (timeSinceLastUpdate > 30000) {
-            indicator.style.background = '#ef4444'; // Vermelho - sem atualizações
-        } else if (timeSinceLastUpdate > 15000) {
-            indicator.style.background = '#f59e0b'; // Amarelo - atualizações lentas
-        } else {
-            indicator.style.background = '#10b981'; // Verde - funcionando bem
-        }
-    }, 5000);
-}
-
-// Inicializar melhorias
-setTimeout(() => {
-    enhanceRenderOrders();
-    addConnectionIndicator();
-    
-    console.log('✅ Realtime Fix v1.0 configurado completamente!');
-    console.log('🔧 Recursos ativados:');
-    console.log('  ✅ Listener aprimorado sem debounce');
-    console.log('  ✅ Heartbeat de conexão');
-    console.log('  ✅ Reconexão automática');
-    console.log('  ✅ Logs detalhados');
-    console.log('  ✅ Indicador de conexão');
-    console.log('  ✅ Notificações instantâneas');
-    
-}, 5000);
-
-// Limpar recursos ao sair da página
-window.addEventListener('beforeunload', () => {
-    if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-    }
-    if (unsubscribeAssignments) {
-        unsubscribeAssignments();
-    }
-});
-
-console.log('✅ Realtime Fix v1.0 carregado!');
-</script>
-
-<!-- Estilos para indicador de conexão -->
-<style>
-@keyframes pulse {
-    0%, 100% { 
-        opacity: 1; 
-        transform: scale(1);
-    }
-    50% { 
-        opacity: 0.7; 
-        transform: scale(1.1);
-    }
-}
-
-/* Toast aprimorado para tempo real */
-.realtime-toast {
-    font-weight: 600;
-    animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateX(100%);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-</style>
-
-<!-- FIM DO SCRIPT -->
 </body>
 </html>
