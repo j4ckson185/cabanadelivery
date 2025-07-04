@@ -164,7 +164,7 @@
 
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 1rem;
         }
 
@@ -187,6 +187,12 @@
             font-size: 1.5rem;
             font-weight: 700;
             color: #059669;
+        }
+
+        .summary-secondary {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
         }
 
         .reports-container {
@@ -243,13 +249,23 @@
             padding: 1rem 1.5rem;
             border-bottom: 1px solid #e2e8f0;
             display: grid;
-            grid-template-columns: auto 1fr auto auto;
+            grid-template-columns: auto 1fr auto auto auto;
             gap: 1rem;
             align-items: center;
         }
 
         .order-item:last-child {
             border-bottom: none;
+        }
+
+        .order-item.dispatched {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .order-item.concluded {
+            background: #f0fdf4;
+            border-left: 4px solid #10b981;
         }
 
         .order-id {
@@ -273,6 +289,27 @@
         .order-time {
             font-size: 0.75rem;
             color: #64748b;
+        }
+
+        .order-status {
+            text-align: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .status-dispatched {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }
+
+        .status-concluded {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
         }
 
         .payment-info {
@@ -361,6 +398,50 @@
             opacity: 0.5;
         }
 
+        .legend {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .legend-title {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+
+        .legend-items {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 2px;
+            border: 1px solid #d1d5db;
+        }
+
+        .legend-dispatched {
+            background: #fef3c7;
+            border-color: #fcd34d;
+        }
+
+        .legend-concluded {
+            background: #f0fdf4;
+            border-color: #a7f3d0;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             body {
@@ -389,6 +470,11 @@
             .totals-grid {
                 grid-template-columns: 1fr;
             }
+
+            .legend-items {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
         }
     </style>
 </head>
@@ -396,7 +482,7 @@
     <div class="container">
         <div class="header">
             <div class="header-title">📊 Relatório de Entregas</div>
-            <div class="header-subtitle">Pedidos Concluídos por Entregador</div>
+            <div class="header-subtitle">Pedidos Concluídos e Despachados por Entregador</div>
         </div>
 
         <div class="controls">
@@ -424,18 +510,25 @@
                 <div class="summary-card">
                     <div class="summary-label">Total de Pedidos</div>
                     <div class="summary-value" id="totalOrders">0</div>
+                    <div class="summary-secondary">
+                        <span id="concludedCount">0</span> concluídos • 
+                        <span id="dispatchedCount">0</span> despachados
+                    </div>
                 </div>
                 <div class="summary-card">
                     <div class="summary-label">Total Dinheiro</div>
                     <div class="summary-value" id="totalCash">R$ 0,00</div>
+                    <div class="summary-secondary">Para entregar à loja</div>
                 </div>
                 <div class="summary-card">
                     <div class="summary-label">Total Cartão</div>
                     <div class="summary-value" id="totalCard">R$ 0,00</div>
+                    <div class="summary-secondary">Para entregar à loja</div>
                 </div>
                 <div class="summary-card">
                     <div class="summary-label">Total a Repassar</div>
                     <div class="summary-value" id="grandTotal">R$ 0,00</div>
+                    <div class="summary-secondary">Valor líquido para loja</div>
                 </div>
             </div>
         </div>
@@ -527,26 +620,38 @@
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 
-                // Filtrar apenas pedidos concluídos
-                if (data.status === 'concluded' && data.concludedAt) {
-                    const concludedDate = new Date(data.concludedAt);
+                // ✅ INCLUIR PEDIDOS CONCLUÍDOS E DESPACHADOS
+                if (data.status === 'concluded' || data.status === 'dispatched') {
+                    let targetDate = null;
                     
-                    console.log('🔍 Pedido:', data.order?.displayId);
-                    console.log('- concludedAt:', data.concludedAt);
-                    console.log('- está no período?', concludedDate >= startUTC && concludedDate <= endUTC);
+                    // Para pedidos concluídos, usar concludedAt
+                    if (data.status === 'concluded' && data.concludedAt) {
+                        targetDate = new Date(data.concludedAt);
+                    }
+                    // Para pedidos despachados, usar dispatchedAt
+                    else if (data.status === 'dispatched' && data.dispatchedAt) {
+                        targetDate = new Date(data.dispatchedAt);
+                    }
                     
-                    // Verificar se está no período selecionado
-                    if (concludedDate >= startUTC && concludedDate <= endUTC) {
-                        assignments.push({
-                            id: doc.id,
-                            ...data
-                        });
-                        console.log('✅ Incluído no relatório!');
+                    if (targetDate) {
+                        const statusLabel = data.status === 'concluded' ? 'Concluído' : 'Despachado';
+                        console.log(`🔍 Pedido ${statusLabel}:`, data.order?.displayId);
+                        console.log(`- Data: ${targetDate.toISOString()}`);
+                        console.log('- está no período?', targetDate >= startUTC && targetDate <= endUTC);
+                        
+                        // Verificar se está no período selecionado
+                        if (targetDate >= startUTC && targetDate <= endUTC) {
+                            assignments.push({
+                                id: doc.id,
+                                ...data
+                            });
+                            console.log(`✅ ${statusLabel} incluído no relatório!`);
+                        }
                     }
                 }
             });
 
-            console.log(`✅ ${assignments.length} assignments concluídos encontrados no período`);
+            console.log(`✅ ${assignments.length} assignments encontrados no período`);
             return assignments;
         }
 
@@ -569,7 +674,9 @@
                         totalCash: 0,
                         totalCard: 0,
                         totalOffline: 0,
-                        orderCount: 0
+                        orderCount: 0,
+                        concludedCount: 0,
+                        dispatchedCount: 0
                     });
                 }
 
@@ -578,13 +685,22 @@
                 // Processar pagamentos
                 const paymentInfo = analyzePayments(order);
                 
+                // Determinar data de referência
+                let referenceDate = null;
+                if (assignment.status === 'concluded' && assignment.concludedAt) {
+                    referenceDate = assignment.concludedAt;
+                } else if (assignment.status === 'dispatched' && assignment.dispatchedAt) {
+                    referenceDate = assignment.dispatchedAt;
+                }
+                
                 // Adicionar pedido
                 deliveryInfo.orders.push({
                     id: order.id,
                     displayId: order.displayId,
                     customerName: order.customer?.name || 'Cliente',
                     total: order.total?.orderAmount || 0,
-                    concludedAt: assignment.concludedAt,
+                    referenceDate: referenceDate,
+                    status: assignment.status,
                     paymentInfo: paymentInfo
                 });
 
@@ -593,6 +709,13 @@
                 deliveryInfo.totalCard += paymentInfo.cardOffline;
                 deliveryInfo.totalOffline += paymentInfo.totalOffline;
                 deliveryInfo.orderCount++;
+                
+                // Contar por status
+                if (assignment.status === 'concluded') {
+                    deliveryInfo.concludedCount++;
+                } else if (assignment.status === 'dispatched') {
+                    deliveryInfo.dispatchedCount++;
+                }
 
                 deliveryData.set(deliveryId, deliveryInfo);
             });
@@ -645,7 +768,7 @@
                 document.getElementById('reportsContainer').innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">📭</div>
-                        <p>Nenhum pedido concluído encontrado no período selecionado</p>
+                        <p>Nenhum pedido concluído ou despachado encontrado no período selecionado</p>
                     </div>
                 `;
                 return;
@@ -656,16 +779,22 @@
             let grandTotalCash = 0;
             let grandTotalCard = 0;
             let grandTotalOffline = 0;
+            let grandConcluded = 0;
+            let grandDispatched = 0;
 
             deliveryData.forEach(delivery => {
                 grandTotalOrders += delivery.orderCount;
                 grandTotalCash += delivery.totalCash;
                 grandTotalCard += delivery.totalCard;
                 grandTotalOffline += delivery.totalOffline;
+                grandConcluded += delivery.concludedCount;
+                grandDispatched += delivery.dispatchedCount;
             });
 
             // Mostrar resumo
             document.getElementById('totalOrders').textContent = grandTotalOrders;
+            document.getElementById('concludedCount').textContent = grandConcluded;
+            document.getElementById('dispatchedCount').textContent = grandDispatched;
             document.getElementById('totalCash').textContent = formatCurrency(grandTotalCash);
             document.getElementById('totalCard').textContent = formatCurrency(grandTotalCard);
             document.getElementById('grandTotal').textContent = formatCurrency(grandTotalOffline);
@@ -674,6 +803,24 @@
             // Renderizar por entregador
             const container = document.getElementById('reportsContainer');
             container.innerHTML = '';
+
+            // Adicionar legenda
+            const legend = document.createElement('div');
+            legend.className = 'legend';
+            legend.innerHTML = `
+                <div class="legend-title">📋 Legenda dos Status</div>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <div class="legend-color legend-concluded"></div>
+                        <span>✅ Concluído - Entrega finalizada</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-dispatched"></div>
+                        <span>🚀 Despachado - Saiu para entrega</span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(legend);
 
             // Ordenar entregadores por total a repassar (decrescente)
             const sortedDeliveries = Array.from(deliveryData.values())
@@ -695,8 +842,16 @@
                     <div class="delivery-name">🏍️ ${delivery.name}</div>
                     <div class="delivery-stats">
                         <div class="stat-item">
-                            <span class="stat-label">Pedidos</span>
+                            <span class="stat-label">Total</span>
                             <span class="stat-value">${delivery.orderCount}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Concluídos</span>
+                            <span class="stat-value">${delivery.concludedCount}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Despachados</span>
+                            <span class="stat-value">${delivery.dispatchedCount}</span>
                         </div>
                         <div class="stat-item">
                             <span class="stat-label">Dinheiro</span>
@@ -738,17 +893,23 @@
 
         // Criar item do pedido
         function createOrderItem(order) {
-            const concludedTime = new Date(order.concludedAt).toLocaleString('pt-BR');
+            const referenceTime = new Date(order.referenceDate).toLocaleString('pt-BR');
             const paymentClass = order.paymentInfo.isOffline ? 'payment-offline' : 'payment-online';
             const paymentStatus = order.paymentInfo.isOffline ? '🔴 Cobrar na Entrega' : '🟢 Já Pago';
+            
+            const statusClass = order.status === 'concluded' ? 'concluded' : 'dispatched';
+            const statusLabel = order.status === 'concluded' ? '✅ Concluído' : '🚀 Despachado';
+            const statusBadgeClass = order.status === 'concluded' ? 'status-concluded' : 'status-dispatched';
+            const timeLabel = order.status === 'concluded' ? 'Concluído' : 'Despachado';
 
             return `
-                <div class="order-item">
+                <div class="order-item ${statusClass}">
                     <div class="order-id">#${order.displayId}</div>
                     <div class="order-info">
                         <div class="customer-name">${order.customerName}</div>
-                        <div class="order-time">Concluído: ${concludedTime}</div>
+                        <div class="order-time">${timeLabel}: ${referenceTime}</div>
                     </div>
+                    <div class="order-status ${statusBadgeClass}">${statusLabel}</div>
                     <div class="payment-info">
                         <div class="payment-method">${order.paymentInfo.mainPaymentMethod}</div>
                         <div class="payment-status ${paymentClass}">${paymentStatus}</div>
