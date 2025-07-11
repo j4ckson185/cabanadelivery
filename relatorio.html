@@ -891,7 +891,7 @@
             return section;
         }
 
-        // Criar item do pedido
+// Criar item do pedido
         function createOrderItem(order) {
             const referenceTime = new Date(order.referenceDate).toLocaleString('pt-BR');
             const paymentClass = order.paymentInfo.isOffline ? 'payment-offline' : 'payment-online';
@@ -902,12 +902,30 @@
             const statusBadgeClass = order.status === 'concluded' ? 'status-concluded' : 'status-dispatched';
             const timeLabel = order.status === 'concluded' ? 'Concluído' : 'Despachado';
 
+            // Montar endereço do cliente
+            let customerAddress = 'Endereço não informado';
+            if (order.address) {
+                const street = order.address.streetName || '';
+                const number = order.address.streetNumber || '';
+                const neighborhood = order.address.neighborhood || '';
+                
+                if (street || number) {
+                    customerAddress = `${street} ${number}`.trim();
+                    if (neighborhood) {
+                        customerAddress += `, ${neighborhood}`;
+                    }
+                }
+            }
+
             return `
                 <div class="order-item ${statusClass}">
                     <div class="order-id">#${order.displayId}</div>
                     <div class="order-info">
                         <div class="customer-name">${order.customerName}</div>
                         <div class="order-time">${timeLabel}: ${referenceTime}</div>
+                        <div class="order-address" style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">
+                            📍 ${customerAddress}
+                        </div>
                     </div>
                     <div class="order-status ${statusBadgeClass}">${statusLabel}</div>
                     <div class="payment-info">
