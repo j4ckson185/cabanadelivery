@@ -5009,8 +5009,8 @@ async function loadMotoboyOrders() {
         let html = '';
         
         // Ordenar motoboys por nome
-        const sortedMotoboys = Array.from(motoboyData.values())
-            .sort((a, b) => a.name.localeCompare(b.name));
+const sortedMotoboys = Array.from(motoboyData.values())
+    .sort((a, b) => (a.name || 'Sem nome').localeCompare(b.name || 'Sem nome'));
         
         sortedMotoboys.forEach(motoboy => {
             const statusCounts = {
