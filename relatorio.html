@@ -902,25 +902,40 @@
             const statusBadgeClass = order.status === 'concluded' ? 'status-concluded' : 'status-dispatched';
             const timeLabel = order.status === 'concluded' ? 'Concluído' : 'Despachado';
 
+            // DEBUG: Logs específicos do relatório
+            console.log('🏠 RELATORIO createOrderItem - Pedido:', order.displayId);
+            console.log('🏠 RELATORIO createOrderItem - order.address:', order.address);
+            console.log('🏠 RELATORIO createOrderItem - order:', order);
+
             // Montar endereço do cliente
-            let customerAddress = 'Endereço não informado';
+            let customerAddress = 'TESTE: Rua das Flores 123, Centro'; // TESTE FORÇADO
+            
             if (order.address) {
+                console.log('🏠 RELATORIO Processando endereço para pedido:', order.displayId);
+                console.log('🏠 RELATORIO address object:', order.address);
+                
                 const street = order.address.streetName || '';
                 const number = order.address.streetNumber || '';
                 const neighborhood = order.address.neighborhood || '';
                 
-                console.log('🏠 DEBUG Endereço:', { street, number, neighborhood, fullAddress: order.address });
+                console.log('🏠 RELATORIO Componentes do endereço:', { street, number, neighborhood });
                 
                 if (street || number) {
                     customerAddress = `${street} ${number}`.trim();
                     if (neighborhood) {
                         customerAddress += `, ${neighborhood}`;
                     }
+                    console.log('🏠 RELATORIO Endereço montado (street+number):', customerAddress);
                 } else if (order.address.formattedAddress) {
                     // Fallback para endereço formatado
                     customerAddress = order.address.formattedAddress;
+                    console.log('🏠 RELATORIO Endereço montado (formatted):', customerAddress);
                 }
+            } else {
+                console.log('🏠 RELATORIO Sem endereço para pedido:', order.displayId);
             }
+
+            console.log('🏠 RELATORIO Endereço final:', customerAddress);
 
             return `
                 <div class="order-item ${statusClass}">
@@ -928,7 +943,7 @@
                     <div class="order-info">
                         <div class="customer-name">${order.customerName}</div>
                         <div class="order-time">${timeLabel}: ${referenceTime}</div>
-                        <div class="order-address" style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">
+                        <div class="order-address" style="font-size: 0.75rem; color: #1e40af; font-weight: 500; margin-top: 0.5rem; background: #eff6ff; padding: 0.25rem 0.5rem; border-radius: 4px; border-left: 3px solid #3b82f6;">
                             📍 ${customerAddress}
                         </div>
                     </div>
