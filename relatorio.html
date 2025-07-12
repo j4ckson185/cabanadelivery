@@ -291,6 +291,17 @@
             color: #64748b;
         }
 
+        .order-address {
+            font-size: 0.75rem;
+            color: #1e40af;
+            font-weight: 500;
+            margin-top: 0.5rem;
+            background: #eff6ff;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            border-left: 3px solid #3b82f6;
+        }
+
         .order-status {
             text-align: center;
             padding: 0.25rem 0.75rem;
@@ -542,6 +553,12 @@
     </div>
 
     <script>
+        // ============================================
+        // TESTE: CONFIRMAR QUE O ARQUIVO ESTÁ SENDO CARREGADO
+        // ============================================
+        alert('🔧 TESTE: relatorio.html carregado! Se você vê esta mensagem, o arquivo está correto.');
+        console.log('🔧 TESTE: JavaScript do relatorio.html executando...');
+
         // Estado da aplicação
         let reportData = new Map();
         
@@ -666,6 +683,11 @@
                 const deliveryId = assignment.deliveryId;
                 const deliveryName = assignment.deliveryName;
 
+                // DEBUG: Log da estrutura do pedido para endereço
+                console.log('🔍 RELATORIO DEBUG Pedido:', order.displayId);
+                console.log('🔍 RELATORIO DEBUG order.delivery:', order.delivery);
+                console.log('🔍 RELATORIO DEBUG deliveryAddress:', order.delivery?.deliveryAddress);
+
                 // Inicializar dados do entregador se não existir
                 if (!deliveryData.has(deliveryId)) {
                     deliveryData.set(deliveryId, {
@@ -701,7 +723,8 @@
                     total: order.total?.orderAmount || 0,
                     referenceDate: referenceDate,
                     status: assignment.status,
-                    paymentInfo: paymentInfo
+                    paymentInfo: paymentInfo,
+                    address: order.delivery?.deliveryAddress || null
                 });
 
                 // Somar valores offline (que devem ser entregues à loja)
@@ -891,7 +914,7 @@
             return section;
         }
 
-// Criar item do pedido
+        // Criar item do pedido - COM ENDEREÇO
         function createOrderItem(order) {
             const referenceTime = new Date(order.referenceDate).toLocaleString('pt-BR');
             const paymentClass = order.paymentInfo.isOffline ? 'payment-offline' : 'payment-online';
@@ -907,8 +930,8 @@
             console.log('🏠 RELATORIO createOrderItem - order.address:', order.address);
             console.log('🏠 RELATORIO createOrderItem - order:', order);
 
-            // Montar endereço do cliente
-            let customerAddress = 'TESTE: Rua das Flores 123, Centro'; // TESTE FORÇADO
+            // Montar endereço do cliente - COM TESTE FORÇADO
+            let customerAddress = 'TESTE: Rua das Flores 123, Centro';
             
             if (order.address) {
                 console.log('🏠 RELATORIO Processando endereço para pedido:', order.displayId);
@@ -943,7 +966,7 @@
                     <div class="order-info">
                         <div class="customer-name">${order.customerName}</div>
                         <div class="order-time">${timeLabel}: ${referenceTime}</div>
-                        <div class="order-address" style="font-size: 0.75rem; color: #1e40af; font-weight: 500; margin-top: 0.5rem; background: #eff6ff; padding: 0.25rem 0.5rem; border-radius: 4px; border-left: 3px solid #3b82f6;">
+                        <div class="order-address">
                             📍 ${customerAddress}
                         </div>
                     </div>
