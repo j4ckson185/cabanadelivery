@@ -1075,6 +1075,9 @@
                 <button id="mapBtn" class="btn-clear" style="background: #3b82f6; margin-right: 1rem;">
                     🗺️ Mapa
                 </button>
+                <button id="motoboyOrdersBtn" class="btn-check-duplicates" style="background: #10b981;" onclick="openMotoboyOrdersModal()">
+                    🏍️ Pedidos Motoboys
+                </button>
                 <button id="clearOrdersBtn" class="btn-clear">
                     🗑️ Limpar Pedidos
                 </button>
@@ -4886,5 +4889,242 @@ console.log('🏠 Sistema de Notificações de Endereços Duplicados carregado c
 </script>
 
 <!-- FIM DO SISTEMA DE NOTIFICAÇÕES DE ENDEREÇOS DUPLICADOS -->
+
+<script>
+// ====================================
+// MODAL PEDIDOS MOTOBOYS
+// ====================================
+
+function openMotoboyOrdersModal() {
+    console.log('🏍️ Abrindo modal de pedidos dos motoboys...');
+    
+    // Criar modal
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.id = 'motoboyOrdersModal';
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 1000px; max-height: 90vh;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #10b981, #059669);">
+                <div class="modal-title">🏍️ Pedidos dos Motoboys</div>
+                <div class="modal-subtitle">Status atual de todos os pedidos</div>
+                <button class="close-btn" onclick="closeMotoboyOrdersModal()">×</button>
+            </div>
+            <div class="modal-body" style="padding: 0; max-height: calc(90vh - 120px); overflow-y: auto;">
+                <div id="motoboyOrdersContent">
+                    <div style="text-align: center; padding: 2rem; color: #64748b;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
+                        <p>Carregando pedidos dos motoboys...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Carregar dados
+    setTimeout(() => {
+        loadMotoboyOrders();
+    }, 500);
+}
+
+function closeMotoboyOrdersModal() {
+    const modal = document.getElementById('motoboyOrdersModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function loadMotoboyOrders() {
+    try {
+        console.log('📦 Carregando pedidos dos motoboys...');
+        
+        // Verificar se as variáveis globais existem
+        if (typeof deliveryAssignments === 'undefined') {
+            throw new Error('Sistema de assignments não está carregado');
+        }
+        
+        const content = document.getElementById('motoboyOrdersContent');
+        if (!content) return;
+        
+        // Agrupar pedidos por motoboy
+        const motoboyData = new Map();
+        
+        for (const [orderId, assignment] of deliveryAssignments) {
+            const deliveryId = assignment.deliveryId;
+            const deliveryName = assignment.deliveryName;
+            
+            // Inicializar motoboy se não existir
+            if (!motoboyData.has(deliveryId)) {
+                motoboyData.set(deliveryId, {
+                    name: deliveryName,
+                    orders: []
+                });
+            }
+            
+            // Adicionar pedido
+            const order = assignment.order;
+            if (order) {
+                // Montar endereço
+                let address = 'Endereço não informado';
+                if (order.delivery?.deliveryAddress) {
+                    const addr = order.delivery.deliveryAddress;
+                    const street = addr.streetName || '';
+                    const number = addr.streetNumber || '';
+                    const neighborhood = addr.neighborhood || '';
+                    
+                    if (street || number) {
+                        address = `${street} ${number}`.trim();
+                        if (neighborhood) {
+                            address += `, ${neighborhood}`;
+                        }
+                    } else if (addr.formattedAddress) {
+                        address = addr.formattedAddress;
+                    }
+                }
+                
+                motoboyData.get(deliveryId).orders.push({
+                    displayId: order.displayId,
+                    customerName: order.customer?.name || 'Cliente',
+                    status: assignment.status,
+                    address: address,
+                    assignedAt: assignment.assignedAt
+                });
+            }
+        }
+        
+        // Renderizar
+        if (motoboyData.size === 0) {
+            content.innerHTML = `
+                <div style="text-align: center; padding: 3rem; color: #64748b;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                    <p>Nenhum pedido atribuído aos motoboys no momento</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        
+        // Ordenar motoboys por nome
+        const sortedMotoboys = Array.from(motoboyData.values())
+            .sort((a, b) => a.name.localeCompare(b.name));
+        
+        sortedMotoboys.forEach(motoboy => {
+            const statusCounts = {
+                sent: 0,
+                accepted: 0,
+                dispatched: 0,
+                concluded: 0
+            };
+            
+            // Contar status
+            motoboy.orders.forEach(order => {
+                if (statusCounts[order.status] !== undefined) {
+                    statusCounts[order.status]++;
+                }
+            });
+            
+            html += `
+                <div style="border-bottom: 1px solid #e2e8f0;">
+                    <div style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 1.125rem; font-weight: 600;">
+                                🏍️ ${motoboy.name}
+                            </div>
+                            <div style="display: flex; gap: 1rem; font-size: 0.875rem;">
+                                <span>📤 ${statusCounts.sent}</span>
+                                <span>✅ ${statusCounts.accepted}</span>
+                                <span>🚀 ${statusCounts.dispatched}</span>
+                                <span>🎯 ${statusCounts.concluded}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding: 0;">
+            `;
+            
+            if (motoboy.orders.length === 0) {
+                html += `
+                    <div style="padding: 2rem; text-align: center; color: #64748b;">
+                        📭 Nenhum pedido no momento
+                    </div>
+                `;
+            } else {
+                // Ordenar pedidos por data de atribuição (mais recente primeiro)
+                motoboy.orders.sort((a, b) => new Date(b.assignedAt) - new Date(a.assignedAt));
+                
+                motoboy.orders.forEach(order => {
+                    const statusLabels = {
+                        sent: '📤 Enviado',
+                        accepted: '✅ Aceito',
+                        dispatched: '🚀 Despachado',
+                        concluded: '🎯 Concluído'
+                    };
+                    
+                    const statusColors = {
+                        sent: '#f59e0b',
+                        accepted: '#10b981',
+                        dispatched: '#3b82f6',
+                        concluded: '#059669'
+                    };
+                    
+                    const statusLabel = statusLabels[order.status] || order.status;
+                    const statusColor = statusColors[order.status] || '#6b7280';
+                    
+                    html += `
+                        <div style="padding: 1rem; border-bottom: 1px solid #f1f5f9; display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center;">
+                            <div style="font-weight: 600; color: #1e293b;">
+                                #${order.displayId}
+                            </div>
+                            <div>
+                                <div style="font-weight: 500; color: #1e293b; margin-bottom: 0.25rem;">
+                                    👤 ${order.customerName}
+                                </div>
+                                <div style="font-size: 0.75rem; color: #3b82f6; background: #eff6ff; padding: 0.25rem 0.5rem; border-radius: 4px; border-left: 3px solid #3b82f6;">
+                                    📍 ${order.address}
+                                </div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="background: ${statusColor}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; white-space: nowrap;">
+                                    ${statusLabel}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += `
+                    </div>
+                </div>
+            `;
+        });
+        
+        content.innerHTML = html;
+        console.log(`✅ Carregados pedidos de ${motoboyData.size} motoboys`);
+        
+    } catch (error) {
+        console.error('❌ Erro ao carregar pedidos dos motoboys:', error);
+        const content = document.getElementById('motoboyOrdersContent');
+        if (content) {
+            content.innerHTML = `
+                <div style="text-align: center; padding: 3rem; color: #dc2626;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                    <p>Erro ao carregar pedidos: ${error.message}</p>
+                </div>
+            `;
+        }
+    }
+}
+
+// Tornar funções globais
+window.openMotoboyOrdersModal = openMotoboyOrdersModal;
+window.closeMotoboyOrdersModal = closeMotoboyOrdersModal;
+window.loadMotoboyOrders = loadMotoboyOrders;
+
+console.log('✅ Modal Pedidos Motoboys carregado!');
+</script>
 </body>
 </html>
