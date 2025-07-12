@@ -4970,169 +4970,245 @@ async function loadMotoboyOrders() {
     try {
         console.log('📦 Carregando pedidos dos motoboys...');
         
-        // Verificar se as variáveis globais existem
-        if (typeof deliveryAssignments === 'undefined') {
-            throw new Error('Sistema de assignments não está carregado');
-        }
-        
         const content = document.getElementById('motoboyOrdersContent');
         if (!content) return;
         
-        // Agrupar pedidos por motoboy
-        const motoboyData = new Map();
-        
-        for (const [orderId, assignment] of deliveryAssignments) {
-            const deliveryId = assignment.deliveryId;
-            const deliveryName = assignment.deliveryName;
-            
-            // Inicializar motoboy se não existir
-            if (!motoboyData.has(deliveryId)) {
-                motoboyData.set(deliveryId, {
-                    name: deliveryName,
-                    orders: []
-                });
-            }
-            
-            // Adicionar pedido
-            const order = assignment.order;
-            if (order) {
-                // Montar endereço
-                let address = 'Endereço não informado';
-                if (order.delivery?.deliveryAddress) {
-                    const addr = order.delivery.deliveryAddress;
-                    const street = addr.streetName || '';
-                    const number = addr.streetNumber || '';
-                    const neighborhood = addr.neighborhood || '';
-                    
-                    if (street || number) {
-                        address = `${street} ${number}`.trim();
-                        if (neighborhood) {
-                            address += `, ${neighborhood}`;
-                        }
-                    } else if (addr.formattedAddress) {
-                        address = addr.formattedAddress;
-                    }
-                }
-                
-                motoboyData.get(deliveryId).orders.push({
-                    displayId: order.displayId,
-                    customerName: order.customer?.name || 'Cliente',
-                    status: assignment.status,
-                    address: address,
-                    assignedAt: assignment.assignedAt
-                });
-            }
-        }
-        
-        // Renderizar
-        if (motoboyData.size === 0) {
-            content.innerHTML = `
-                <div style="text-align: center; padding: 3rem; color: #64748b;">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
-                    <p>Nenhum pedido atribuído aos motoboys no momento</p>
-                </div>
-            `;
-            return;
-        }
-        
-        let html = '';
-        
-        // Ordenar motoboys por nome
-const sortedMotoboys = Array.from(motoboyData.values())
-    .sort((a, b) => (a.name || 'Sem nome').localeCompare(b.name || 'Sem nome'));
-        
-        sortedMotoboys.forEach(motoboy => {
-            const statusCounts = {
-                sent: 0,
-                accepted: 0,
-                dispatched: 0,
-                concluded: 0
-            };
-            
-            // Contar status
-            motoboy.orders.forEach(order => {
-                if (statusCounts[order.status] !== undefined) {
-                    statusCounts[order.status]++;
-                }
-            });
-            
-            html += `
-                <div style="border-bottom: 1px solid #e2e8f0;">
-                    <div style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 1rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div style="font-size: 1.125rem; font-weight: 600;">
-                                🏍️ ${motoboy.name}
-                            </div>
-                            <div style="display: flex; gap: 1rem; font-size: 0.875rem;">
-                                <span>📤 ${statusCounts.sent}</span>
-                                <span>✅ ${statusCounts.accepted}</span>
-                                <span>🚀 ${statusCounts.dispatched}</span>
-                                <span>🎯 ${statusCounts.concluded}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="padding: 0;">
-            `;
-            
-            if (motoboy.orders.length === 0) {
-                html += `
-                    <div style="padding: 2rem; text-align: center; color: #64748b;">
-                        📭 Nenhum pedido no momento
-                    </div>
-                `;
-            } else {
-                // Ordenar pedidos por data de atribuição (mais recente primeiro)
-                motoboy.orders.sort((a, b) => new Date(b.assignedAt) - new Date(a.assignedAt));
-                
-                motoboy.orders.forEach(order => {
-                    const statusLabels = {
-                        sent: '📤 Enviado',
-                        accepted: '✅ Aceito',
-                        dispatched: '🚀 Despachado',
-                        concluded: '🎯 Concluído'
-                    };
-                    
-                    const statusColors = {
-                        sent: '#f59e0b',
-                        accepted: '#10b981',
-                        dispatched: '#3b82f6',
-                        concluded: '#059669'
-                    };
-                    
-                    const statusLabel = statusLabels[order.status] || order.status;
-                    const statusColor = statusColors[order.status] || '#6b7280';
-                    
-                    html += `
-                        <div style="padding: 1rem; border-bottom: 1px solid #f1f5f9; display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center;">
-                            <div style="font-weight: 600; color: #1e293b;">
-                                #${order.displayId}
-                            </div>
-                            <div>
-                                <div style="font-weight: 500; color: #1e293b; margin-bottom: 0.25rem;">
-                                    👤 ${order.customerName}
-                                </div>
-                                <div style="font-size: 0.75rem; color: #3b82f6; background: #eff6ff; padding: 0.25rem 0.5rem; border-radius: 4px; border-left: 3px solid #3b82f6;">
-                                    📍 ${order.address}
-                                </div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="background: ${statusColor}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; white-space: nowrap;">
-                                    ${statusLabel}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-            
-            html += `
-                    </div>
-                </div>
-            `;
+        // ✅ DEBUGGING DETALHADO
+        console.log('🔍 DEBUG deliveryAssignments:', {
+            existe: typeof deliveryAssignments !== 'undefined',
+            tamanho: deliveryAssignments ? deliveryAssignments.size : 'N/A',
+            tipo: typeof deliveryAssignments
         });
         
-        content.innerHTML = html;
-        console.log(`✅ Carregados pedidos de ${motoboyData.size} motoboys`);
+        // Verificar se deliveryAssignments existe e tem dados
+        if (typeof deliveryAssignments === 'undefined') {
+            throw new Error('deliveryAssignments não está definido');
+        }
+        
+        if (deliveryAssignments.size === 0) {
+            console.log('⚠️ deliveryAssignments está vazio - carregando do Firebase...');
+            
+            // Tentar carregar diretamente do Firebase
+            const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+            const assignmentsRef = collection(window.firebaseDb, 'deliveryAssignments');
+            const snapshot = await getDocs(assignmentsRef);
+            
+            console.log(`📦 Dados do Firebase: ${snapshot.size} documentos encontrados`);
+            
+            // Processar dados do Firebase temporariamente para este modal
+            const tempAssignments = new Map();
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                tempAssignments.set(doc.id, {
+                    deliveryId: data.deliveryId,
+                    deliveryName: data.deliveryName,
+                    status: data.status,
+                    assignedAt: data.assignedAt,
+                    acceptedAt: data.acceptedAt,
+                    dispatchedAt: data.dispatchedAt,
+                    concludedAt: data.concludedAt,
+                    order: data.order
+                });
+                
+                console.log(`📋 Assignment encontrado: ${doc.id} -> ${data.deliveryName} (${data.status})`);
+            });
+            
+            // Usar dados temporários se deliveryAssignments estiver vazio
+            if (tempAssignments.size > 0) {
+                console.log(`✅ Usando ${tempAssignments.size} assignments do Firebase`);
+                processMotoboyData(tempAssignments, content);
+                return;
+            }
+        }
+        
+        // Usar deliveryAssignments normal se tiver dados
+        console.log(`📦 Usando deliveryAssignments normal: ${deliveryAssignments.size} assignments`);
+        processMotoboyData(deliveryAssignments, content);
+        
+    } catch (error) {
+        console.error('❌ Erro ao carregar pedidos dos motoboys:', error);
+        const content = document.getElementById('motoboyOrdersContent');
+        if (content) {
+            content.innerHTML = `
+                <div style="text-align: center; padding: 3rem; color: #dc2626;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+                    <p>Erro ao carregar pedidos: ${error.message}</p>
+                    <button onclick="loadMotoboyOrders()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        🔄 Tentar Novamente
+                    </button>
+                </div>
+            `;
+        }
+    }
+}
+
+// ✅ NOVA FUNÇÃO para processar os dados dos motoboys
+function processMotoboyData(assignmentsMap, content) {
+    // Agrupar pedidos por motoboy
+    const motoboyData = new Map();
+    
+    for (const [orderId, assignment] of assignmentsMap) {
+        const deliveryId = assignment.deliveryId;
+        const deliveryName = assignment.deliveryName;
+        
+        console.log(`🔍 Processando assignment: ${orderId} -> ${deliveryName} (${assignment.status})`);
+        
+        // Inicializar motoboy se não existir
+        if (!motoboyData.has(deliveryId)) {
+            motoboyData.set(deliveryId, {
+                name: deliveryName,
+                orders: []
+            });
+        }
+        
+        // Adicionar pedido
+        const order = assignment.order;
+        if (order) {
+            // Montar endereço
+            let address = 'Endereço não informado';
+            if (order.delivery?.deliveryAddress) {
+                const addr = order.delivery.deliveryAddress;
+                const street = addr.streetName || '';
+                const number = addr.streetNumber || '';
+                const neighborhood = addr.neighborhood || '';
+                
+                if (street || number) {
+                    address = `${street} ${number}`.trim();
+                    if (neighborhood) {
+                        address += `, ${neighborhood}`;
+                    }
+                } else if (addr.formattedAddress) {
+                    address = addr.formattedAddress;
+                }
+            }
+            
+            motoboyData.get(deliveryId).orders.push({
+                displayId: order.displayId,
+                customerName: order.customer?.name || 'Cliente',
+                status: assignment.status,
+                address: address,
+                assignedAt: assignment.assignedAt
+            });
+        } else {
+            console.warn(`⚠️ Assignment ${orderId} sem dados de pedido`);
+        }
+    }
+    
+    console.log(`📊 Dados processados: ${motoboyData.size} motoboys`);
+    
+    // Renderizar
+    if (motoboyData.size === 0) {
+        content.innerHTML = `
+            <div style="text-align: center; padding: 3rem; color: #64748b;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                <p>Nenhum pedido atribuído aos motoboys no momento</p>
+                <p style="font-size: 0.875rem; color: #9ca3af; margin-top: 1rem;">
+                    Total de assignments encontrados: ${assignmentsMap.size}
+                </p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    
+    // Ordenar motoboys por nome
+    const sortedMotoboys = Array.from(motoboyData.values())
+        .sort((a, b) => (a.name || 'Sem nome').localeCompare(b.name || 'Sem nome'));
+    
+    sortedMotoboys.forEach(motoboy => {
+        const statusCounts = {
+            sent: 0,
+            accepted: 0,
+            dispatched: 0,
+            concluded: 0
+        };
+        
+        // Contar status
+        motoboy.orders.forEach(order => {
+            if (statusCounts[order.status] !== undefined) {
+                statusCounts[order.status]++;
+            }
+        });
+        
+        html += `
+            <div style="border-bottom: 1px solid #e2e8f0;">
+                <div style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-size: 1.125rem; font-weight: 600;">
+                            🏍️ ${motoboy.name}
+                        </div>
+                        <div style="display: flex; gap: 1rem; font-size: 0.875rem;">
+                            <span>📤 ${statusCounts.sent}</span>
+                            <span>✅ ${statusCounts.accepted}</span>
+                            <span>🚀 ${statusCounts.dispatched}</span>
+                            <span>🎯 ${statusCounts.concluded}</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="padding: 0;">
+        `;
+        
+        if (motoboy.orders.length === 0) {
+            html += `
+                <div style="padding: 2rem; text-align: center; color: #64748b;">
+                    📭 Nenhum pedido no momento
+                </div>
+            `;
+        } else {
+            // Ordenar pedidos por data de atribuição (mais recente primeiro)
+            motoboy.orders.sort((a, b) => new Date(b.assignedAt) - new Date(a.assignedAt));
+            
+            motoboy.orders.forEach(order => {
+                const statusLabels = {
+                    sent: '📤 Enviado',
+                    accepted: '✅ Aceito',
+                    dispatched: '🚀 Despachado',
+                    concluded: '🎯 Concluído'
+                };
+                
+                const statusColors = {
+                    sent: '#f59e0b',
+                    accepted: '#10b981',
+                    dispatched: '#3b82f6',
+                    concluded: '#059669'
+                };
+                
+                const statusLabel = statusLabels[order.status] || order.status;
+                const statusColor = statusColors[order.status] || '#6b7280';
+                
+                html += `
+                    <div style="padding: 1rem; border-bottom: 1px solid #f1f5f9; display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center;">
+                        <div style="font-weight: 600; color: #1e293b;">
+                            #${order.displayId}
+                        </div>
+                        <div>
+                            <div style="font-weight: 500; color: #1e293b; margin-bottom: 0.25rem;">
+                                👤 ${order.customerName}
+                            </div>
+                            <div style="font-size: 0.75rem; color: #3b82f6; background: #eff6ff; padding: 0.25rem 0.5rem; border-radius: 4px; border-left: 3px solid #3b82f6;">
+                                📍 ${order.address}
+                            </div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="background: ${statusColor}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; white-space: nowrap;">
+                                ${statusLabel}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    content.innerHTML = html;
+    console.log(`✅ Carregados pedidos de ${motoboyData.size} motoboys`);
+}
         
     } catch (error) {
         console.error('❌ Erro ao carregar pedidos dos motoboys:', error);
