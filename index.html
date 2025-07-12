@@ -4968,38 +4968,96 @@ function closeMotoboyOrdersModal() {
 
 async function loadMotoboyOrders() {
     try {
-        console.log('📦 Carregando pedidos dos motoboys...');
+        console.log('📦 === INICIANDO CARREGAMENTO DOS PEDIDOS DOS MOTOBOYS ===');
         
         const content = document.getElementById('motoboyOrdersContent');
-        if (!content) return;
-        
-        // ✅ DEBUGGING DETALHADO
-        console.log('🔍 DEBUG deliveryAssignments:', {
-            existe: typeof deliveryAssignments !== 'undefined',
-            tamanho: deliveryAssignments ? deliveryAssignments.size : 'N/A',
-            tipo: typeof deliveryAssignments
-        });
-        
-        // Verificar se deliveryAssignments existe e tem dados
-        if (typeof deliveryAssignments === 'undefined') {
-            throw new Error('deliveryAssignments não está definido');
+        if (!content) {
+            console.error('❌ Elemento motoboyOrdersContent não encontrado');
+            return;
         }
         
-        if (deliveryAssignments.size === 0) {
-            console.log('⚠️ deliveryAssignments está vazio - carregando do Firebase...');
+        // ✅ DEBUGGING SUPER DETALHADO
+        console.log('🔍 DEBUG COMPLETO:');
+        console.log('- deliveryAssignments existe?', typeof deliveryAssignments !== 'undefined');
+        console.log('- deliveryAssignments valor:', deliveryAssignments);
+        console.log('- deliveryAssignments.size:', deliveryAssignments ? deliveryAssignments.size : 'N/A');
+        console.log('- window.firebaseDb existe?', typeof window.firebaseDb !== 'undefined');
+        console.log('- window.firebaseDb valor:', window.firebaseDb);
+        
+        // ✅ MOSTRAR DADOS BRUTOS DE deliveryAssignments
+        if (typeof deliveryAssignments !== 'undefined' && deliveryAssignments.size > 0) {
+            console.log('📋 DADOS EM deliveryAssignments:');
+            let count = 0;
+            for (const [id, assignment] of deliveryAssignments) {
+                count++;
+                console.log(`${count}. ID: ${id}`);
+                console.log(`   - deliveryId: ${assignment.deliveryId}`);
+                console.log(`   - deliveryName: ${assignment.deliveryName}`);
+                console.log(`   - status: ${assignment.status}`);
+                console.log(`   - tem order? ${!!assignment.order}`);
+                console.log(`   - order.displayId: ${assignment.order?.displayId}`);
+                console.log(`   - assignedAt: ${assignment.assignedAt}`);
+                console.log('   - assignment completo:', assignment);
+                
+                if (count >= 5) {
+                    console.log('   ... (mostrando apenas os primeiros 5)');
+                    break;
+                }
+            }
+        }
+        
+        // ✅ TENTAR SEMPRE CARREGAR DO FIREBASE PRIMEIRO
+        console.log('🔥 Carregando DIRETAMENTE do Firebase...');
+        
+        // Verificar se Firebase está disponível
+        if (typeof window.firebaseDb === 'undefined') {
+            throw new Error('Firebase não está configurado');
+        }
+        
+        // Carregar do Firebase
+        const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+        const assignmentsRef = collection(window.firebaseDb, 'deliveryAssignments');
+        const snapshot = await getDocs(assignmentsRef);
+        
+        console.log(`🔥 Firebase respondeu: ${snapshot.size} documentos encontrados`);
+        
+        if (snapshot.size === 0) {
+            content.innerHTML = `
+                <div style="text-align: center; padding: 3rem; color: #64748b;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                    <p><strong>Nenhum assignment encontrado no Firebase</strong></p>
+                    <p style="font-size: 0.875rem; color: #9ca3af; margin-top: 1rem;">
+                        Collection: deliveryAssignments<br>
+                        Documentos: ${snapshot.size}<br>
+                        deliveryAssignments local: ${deliveryAssignments ? deliveryAssignments.size : 'undefined'}
+                    </p>
+                    <button onclick="loadMotoboyOrders()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        🔄 Recarregar
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        // ✅ PROCESSAR DADOS DO FIREBASE COM LOGS DETALHADOS
+        const allAssignments = new Map();
+        let validAssignments = 0;
+        let invalidAssignments = 0;
+        
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            const docId = doc.id;
             
-            // Tentar carregar diretamente do Firebase
-            const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-            const assignmentsRef = collection(window.firebaseDb, 'deliveryAssignments');
-            const snapshot = await getDocs(assignmentsRef);
+            console.log(`📋 Processando documento: ${docId}`);
+            console.log(`   - deliveryId: ${data.deliveryId}`);
+            console.log(`   - deliveryName: ${data.deliveryName}`);
+            console.log(`   - status: ${data.status}`);
+            console.log(`   - tem order? ${!!data.order}`);
+            console.log(`   - order.displayId: ${data.order?.displayId}`);
+            console.log(`   - data completo:`, data);
             
-            console.log(`📦 Dados do Firebase: ${snapshot.size} documentos encontrados`);
-            
-            // Processar dados do Firebase temporariamente para este modal
-            const tempAssignments = new Map();
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                tempAssignments.set(doc.id, {
+            if (data.deliveryId && data.deliveryName && data.status) {
+                allAssignments.set(docId, {
                     deliveryId: data.deliveryId,
                     deliveryName: data.deliveryName,
                     status: data.status,
@@ -5009,30 +5067,61 @@ async function loadMotoboyOrders() {
                     concludedAt: data.concludedAt,
                     order: data.order
                 });
-                
-                console.log(`📋 Assignment encontrado: ${doc.id} -> ${data.deliveryName} (${data.status})`);
-            });
-            
-            // Usar dados temporários se deliveryAssignments estiver vazio
-            if (tempAssignments.size > 0) {
-                console.log(`✅ Usando ${tempAssignments.size} assignments do Firebase`);
-                processMotoboyData(tempAssignments, content);
-                return;
+                validAssignments++;
+                console.log(`   ✅ Assignment válido adicionado`);
+            } else {
+                invalidAssignments++;
+                console.log(`   ❌ Assignment inválido (dados faltando)`);
             }
+        });
+        
+        console.log(`📊 Resultado do processamento:`);
+        console.log(`   - Total documentos: ${snapshot.size}`);
+        console.log(`   - Assignments válidos: ${validAssignments}`);
+        console.log(`   - Assignments inválidos: ${invalidAssignments}`);
+        console.log(`   - allAssignments.size: ${allAssignments.size}`);
+        
+        // ✅ PROCESSAR E MOSTRAR OS DADOS
+        if (allAssignments.size === 0) {
+            content.innerHTML = `
+                <div style="text-align: center; padding: 3rem; color: #dc2626;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                    <p><strong>Dados encontrados, mas nenhum válido</strong></p>
+                    <p style="font-size: 0.875rem; color: #9ca3af; margin-top: 1rem;">
+                        Total documentos Firebase: ${snapshot.size}<br>
+                        Assignments válidos: ${validAssignments}<br>
+                        Assignments inválidos: ${invalidAssignments}
+                    </p>
+                    <details style="margin-top: 1rem; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto;">
+                        <summary style="cursor: pointer; font-weight: bold;">Ver dados brutos (debug)</summary>
+                        <pre style="background: #f3f4f6; padding: 1rem; border-radius: 4px; overflow: auto; max-height: 200px; font-size: 0.75rem; margin-top: 0.5rem;">
+${JSON.stringify(Array.from(snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }))), null, 2)}
+                        </pre>
+                    </details>
+                </div>
+            `;
+            return;
         }
         
-        // Usar deliveryAssignments normal se tiver dados
-        console.log(`📦 Usando deliveryAssignments normal: ${deliveryAssignments.size} assignments`);
-        processMotoboyData(deliveryAssignments, content);
+        // ✅ PROCESSAR DADOS VÁLIDOS
+        console.log('🎨 Processando dados para exibição...');
+        processMotoboyData(allAssignments, content);
         
     } catch (error) {
-        console.error('❌ Erro ao carregar pedidos dos motoboys:', error);
+        console.error('❌ ERRO DETALHADO:', error);
+        console.error('Stack trace:', error.stack);
+        
         const content = document.getElementById('motoboyOrdersContent');
         if (content) {
             content.innerHTML = `
                 <div style="text-align: center; padding: 3rem; color: #dc2626;">
                     <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
-                    <p>Erro ao carregar pedidos: ${error.message}</p>
+                    <p><strong>Erro ao carregar:</strong></p>
+                    <p style="color: #dc2626; font-family: monospace; margin: 1rem 0;">${error.message}</p>
+                    <details style="margin-top: 1rem; text-align: left;">
+                        <summary style="cursor: pointer;">Ver erro completo</summary>
+                        <pre style="background: #fef2f2; padding: 1rem; border-radius: 4px; overflow: auto; max-height: 200px; font-size: 0.75rem; margin-top: 0.5rem;">${error.stack}</pre>
+                    </details>
                     <button onclick="loadMotoboyOrders()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
                         🔄 Tentar Novamente
                     </button>
