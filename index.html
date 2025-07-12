@@ -4921,7 +4921,7 @@ console.log('🏠 Sistema de Notificações de Endereços Duplicados carregado c
 
 <script>
 // ====================================
-// MODAL PEDIDOS MOTOBOYS
+// MODAL PEDIDOS MOTOBOYS - FUNÇÕES GLOBAIS
 // ====================================
 
 function openMotoboyOrdersModal() {
@@ -5209,27 +5209,9 @@ function processMotoboyData(assignmentsMap, content) {
     content.innerHTML = html;
     console.log(`✅ Carregados pedidos de ${motoboyData.size} motoboys`);
 }
-        
-    } catch (error) {
-        console.error('❌ Erro ao carregar pedidos dos motoboys:', error);
-        const content = document.getElementById('motoboyOrdersContent');
-        if (content) {
-            content.innerHTML = `
-                <div style="text-align: center; padding: 3rem; color: #dc2626;">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
-                    <p>Erro ao carregar pedidos: ${error.message}</p>
-                </div>
-            `;
-        }
-    }
-}
 
-// Tornar funções globais
-window.openMotoboyOrdersModal = openMotoboyOrdersModal;
-window.closeMotoboyOrdersModal = closeMotoboyOrdersModal;
-window.loadMotoboyOrders = loadMotoboyOrders;
-
-console.log('✅ Modal Pedidos Motoboys carregado!');
+console.log('✅ Funções do Modal Pedidos Motoboys carregadas!');
+</script>
 </script>
 </body>
 </html>
