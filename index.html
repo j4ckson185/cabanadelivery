@@ -5131,12 +5131,18 @@ ${JSON.stringify(Array.from(snapshot.docs.map(doc => ({ id: doc.id, data: doc.da
     }
 }
 
-// ✅ NOVA FUNÇÃO para processar os dados dos motoboys
+// ✅ FUNÇÃO para processar os dados dos motoboys - APENAS ACEITOS E DESPACHADOS
 function processMotoboyData(assignmentsMap, content) {
     // Agrupar pedidos por motoboy
     const motoboyData = new Map();
     
     for (const [orderId, assignment] of assignmentsMap) {
+        // ✅ FILTRAR APENAS ACEITOS E DESPACHADOS
+        if (assignment.status !== 'accepted' && assignment.status !== 'dispatched') {
+            console.log(`🔍 Pedido ${assignment.order?.displayId} ignorado - status: ${assignment.status}`);
+            continue; // Pular este assignment
+        }
+        
         const deliveryId = assignment.deliveryId;
         const deliveryName = assignment.deliveryName;
         
@@ -5183,17 +5189,31 @@ function processMotoboyData(assignmentsMap, content) {
         }
     }
     
-    console.log(`📊 Dados processados: ${motoboyData.size} motoboys`);
+    console.log(`📊 Dados processados: ${motoboyData.size} motoboys com pedidos ativos`);
+    
+    // ✅ REMOVER MOTOBOYS SEM PEDIDOS ATIVOS
+    const motoboyWithActiveOrders = new Map();
+    for (const [deliveryId, motoboyInfo] of motoboyData) {
+        if (motoboyInfo.orders.length > 0) {
+            motoboyWithActiveOrders.set(deliveryId, motoboyInfo);
+        } else {
+            console.log(`📭 Motoboy ${motoboyInfo.name} removido - sem pedidos ativos`);
+        }
+    }
     
     // Renderizar
-    if (motoboyData.size === 0) {
+    if (motoboyWithActiveOrders.size === 0) {
         content.innerHTML = `
             <div style="text-align: center; padding: 3rem; color: #64748b;">
                 <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
-                <p>Nenhum pedido atribuído aos motoboys no momento</p>
+                <p><strong>Nenhum pedido ativo no momento</strong></p>
                 <p style="font-size: 0.875rem; color: #9ca3af; margin-top: 1rem;">
+                    Exibindo apenas pedidos: <strong>Aceitos</strong> e <strong>Despachados</strong><br>
                     Total de assignments encontrados: ${assignmentsMap.size}
                 </p>
+                <button onclick="loadMotoboyOrders()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    🔄 Atualizar
+                </button>
             </div>
         `;
         return;
@@ -5202,15 +5222,14 @@ function processMotoboyData(assignmentsMap, content) {
     let html = '';
     
     // Ordenar motoboys por nome
-    const sortedMotoboys = Array.from(motoboyData.values())
+    const sortedMotoboys = Array.from(motoboyWithActiveOrders.values())
         .sort((a, b) => (a.name || 'Sem nome').localeCompare(b.name || 'Sem nome'));
     
     sortedMotoboys.forEach(motoboy => {
+        // ✅ CONTAR APENAS ACEITOS E DESPACHADOS
         const statusCounts = {
-            sent: 0,
             accepted: 0,
-            dispatched: 0,
-            concluded: 0
+            dispatched: 0
         };
         
         // Contar status
@@ -5220,6 +5239,8 @@ function processMotoboyData(assignmentsMap, content) {
             }
         });
         
+        const totalActive = statusCounts.accepted + statusCounts.dispatched;
+        
         html += `
             <div style="border-bottom: 1px solid #e2e8f0;">
                 <div style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 1rem;">
@@ -5228,10 +5249,11 @@ function processMotoboyData(assignmentsMap, content) {
                             🏍️ ${motoboy.name}
                         </div>
                         <div style="display: flex; gap: 1rem; font-size: 0.875rem;">
-                            <span>📤 ${statusCounts.sent}</span>
+                            <span style="background: rgba(255,255,255,0.2); padding: 0.25rem 0.5rem; border-radius: 12px;">
+                                📦 ${totalActive} ativos
+                            </span>
                             <span>✅ ${statusCounts.accepted}</span>
                             <span>🚀 ${statusCounts.dispatched}</span>
-                            <span>🎯 ${statusCounts.concluded}</span>
                         </div>
                     </div>
                 </div>
@@ -5241,7 +5263,7 @@ function processMotoboyData(assignmentsMap, content) {
         if (motoboy.orders.length === 0) {
             html += `
                 <div style="padding: 2rem; text-align: center; color: #64748b;">
-                    📭 Nenhum pedido no momento
+                    📭 Nenhum pedido ativo
                 </div>
             `;
         } else {
@@ -5249,18 +5271,15 @@ function processMotoboyData(assignmentsMap, content) {
             motoboy.orders.sort((a, b) => new Date(b.assignedAt) - new Date(a.assignedAt));
             
             motoboy.orders.forEach(order => {
+                // ✅ APENAS LABELS PARA ACEITOS E DESPACHADOS
                 const statusLabels = {
-                    sent: '📤 Enviado',
                     accepted: '✅ Aceito',
-                    dispatched: '🚀 Despachado',
-                    concluded: '🎯 Concluído'
+                    dispatched: '🚀 Despachado'
                 };
                 
                 const statusColors = {
-                    sent: '#f59e0b',
                     accepted: '#10b981',
-                    dispatched: '#3b82f6',
-                    concluded: '#059669'
+                    dispatched: '#3b82f6'
                 };
                 
                 const statusLabel = statusLabels[order.status] || order.status;
@@ -5296,7 +5315,7 @@ function processMotoboyData(assignmentsMap, content) {
     });
     
     content.innerHTML = html;
-    console.log(`✅ Carregados pedidos de ${motoboyData.size} motoboys`);
+    console.log(`✅ Exibindo ${motoboyWithActiveOrders.size} motoboys com pedidos ativos (aceitos/despachados)`);
 }
 
 console.log('✅ Funções do Modal Pedidos Motoboys carregadas!');
