@@ -909,11 +909,16 @@
                 const number = order.address.streetNumber || '';
                 const neighborhood = order.address.neighborhood || '';
                 
+                console.log('🏠 DEBUG Endereço:', { street, number, neighborhood, fullAddress: order.address });
+                
                 if (street || number) {
                     customerAddress = `${street} ${number}`.trim();
                     if (neighborhood) {
                         customerAddress += `, ${neighborhood}`;
                     }
+                } else if (order.address.formattedAddress) {
+                    // Fallback para endereço formatado
+                    customerAddress = order.address.formattedAddress;
                 }
             }
 
