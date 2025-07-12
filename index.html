@@ -1236,9 +1236,9 @@
                 <div class="delivery-name">🏍️ Rafael Judson</div>
                 <div class="delivery-email">rafaeljudson.profissional@gmail.com</div>
             </div>
-            <div class="delivery-option" onclick="assignToDelivery('rivanilson', 'Rivanilson')">
-                <div class="delivery-name">🏍️ Rivanilson</div>
-                <div class="delivery-email">rivanilsonotaviano@gmail.com</div>
+            <div class="delivery-option" onclick="assignToDelivery('lucas', 'Rafael Lucas')">
+                <div class="delivery-name">🏍️ Rafael Lucas</div>
+                <div class="delivery-email">rafaellucas2108@gmail.com</div>
             </div>
         </div>
     </div>
@@ -4247,43 +4247,72 @@ function setupModalAssignmentAddon() {
         console.log('❌ Modal de seleção de entregador fechado');
     };
 
-    // ✅ ADICIONAR RAFAEL JUDSON AO MODAL (caso não tenha sido adicionado ainda)
-    function addRafaelToDeliveryModal() {
-        const deliveryList = document.querySelector('.delivery-list');
-        if (!deliveryList) {
-            console.log('⚠️ Lista de entregadores não encontrada');
-            return;
-        }
-        
-        // Verificar se Rafael já existe
-        const existingRafael = Array.from(deliveryList.children).find(option => 
-            option.textContent.includes('Rafael') || option.textContent.includes('rafaeljudson')
-        );
-        
-        if (!existingRafael) {
-            console.log('📋 Adicionando Rafael Judson ao modal de entregadores');
-            
-            const rafaelOption = document.createElement('div');
-            rafaelOption.className = 'delivery-option';
-            rafaelOption.onclick = () => window.assignToDelivery('rafael', 'Rafael Judson');
-            rafaelOption.innerHTML = `
-                <div class="delivery-name">🏍️ Rafael Judson</div>
-                <div class="delivery-email">rafaeljudson.profissional@gmail.com</div>
-            `;
-            
-            // Adicionar antes do último item (Rivanilson)
-            const lastOption = deliveryList.lastElementChild;
-            if (lastOption) {
-                deliveryList.insertBefore(rafaelOption, lastOption);
-            } else {
-                deliveryList.appendChild(rafaelOption);
-            }
-            
-            console.log('✅ Rafael Judson adicionado ao modal');
-        } else {
-            console.log('✅ Rafael Judson já existe no modal');
-        }
+// ✅ ADICIONAR RAFAEL AO MODAL (VERSÃO ATUALIZADA PARA 2 RAFAELS)
+function addRafaelToDeliveryModal() {
+    const deliveryList = document.querySelector('.delivery-list');
+    if (!deliveryList) {
+        console.log('⚠️ Lista de entregadores não encontrada');
+        return;
     }
+    
+    // ===== RAFAEL JUDSON =====
+    const existingRafaelJudson = Array.from(deliveryList.children).find(option => 
+        option.textContent.includes('Rafael Judson') || option.textContent.includes('rafaeljudson')
+    );
+    
+    if (!existingRafaelJudson) {
+        console.log('📋 Adicionando Rafael Judson ao modal de entregadores');
+        
+        const rafaelJudsonOption = document.createElement('div');
+        rafaelJudsonOption.className = 'delivery-option';
+        rafaelJudsonOption.onclick = () => window.assignToDelivery('rafael', 'Rafael Judson');
+        rafaelJudsonOption.innerHTML = `
+            <div class="delivery-name">🏍️ Rafael Judson</div>
+            <div class="delivery-email">rafaeljudson.profissional@gmail.com</div>
+        `;
+        
+        // Adicionar antes do último item (Rivanilson)
+        const lastOption = deliveryList.lastElementChild;
+        if (lastOption) {
+            deliveryList.insertBefore(rafaelJudsonOption, lastOption);
+        } else {
+            deliveryList.appendChild(rafaelJudsonOption);
+        }
+        
+        console.log('✅ Rafael Judson adicionado ao modal');
+    } else {
+        console.log('✅ Rafael Judson já existe no modal');
+    }
+    
+    // ===== RAFAEL LUCAS =====
+    const existingRafaelLucas = Array.from(deliveryList.children).find(option => 
+        option.textContent.includes('Rafael Lucas') || option.textContent.includes('rafaellucas2108')
+    );
+    
+    if (!existingRafaelLucas) {
+        console.log('📋 Adicionando Rafael Lucas ao modal de entregadores');
+        
+        const rafaelLucasOption = document.createElement('div');
+        rafaelLucasOption.className = 'delivery-option';
+        rafaelLucasOption.onclick = () => window.assignToDelivery('lucas', 'Rafael Lucas');
+        rafaelLucasOption.innerHTML = `
+            <div class="delivery-name">🏍️ Rafael Lucas</div>
+            <div class="delivery-email">rafaellucas2108@gmail.com</div>
+        `;
+        
+        // Adicionar antes do último item (Rivanilson)
+        const lastOptionLucas = deliveryList.lastElementChild;
+        if (lastOptionLucas) {
+            deliveryList.insertBefore(rafaelLucasOption, lastOptionLucas);
+        } else {
+            deliveryList.appendChild(rafaelLucasOption);
+        }
+        
+        console.log('✅ Rafael Lucas adicionado ao modal');
+    } else {
+        console.log('✅ Rafael Lucas já existe no modal');
+    }
+}
 
     // ✅ ADICIONAR RAFAEL AO MODAL
     setTimeout(() => {
